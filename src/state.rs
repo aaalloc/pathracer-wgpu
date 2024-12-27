@@ -10,6 +10,7 @@ pub struct State<'a> {
     // it gets dropped after it as the surface contains
     // unsafe references to the window's resources.
     window: &'a Window,
+    background_color: wgpu::Color,
 }
 
 impl<'a> State<'a> {
@@ -79,6 +80,12 @@ impl<'a> State<'a> {
             queue,
             config,
             size,
+            background_color: wgpu::Color {
+                r: 0.1,
+                g: 0.2,
+                b: 0.3,
+                a: 1.0,
+            },
         }
     }
 
@@ -96,6 +103,23 @@ impl<'a> State<'a> {
     }
 
     pub fn input(&mut self, event: &WindowEvent) -> bool {
+        match event {
+            WindowEvent::MouseInput { button, state, .. } => {
+                log::info!("Mouse input event");
+                let is_left_button = *button == winit::event::MouseButton::Left;
+                let is_pressed = *state == winit::event::ElementState::Pressed;
+                if is_left_button && is_pressed {
+                    self.background_color = wgpu::Color {
+                        r: self.background_color.r + 0.1,
+                        g: self.background_color.g + 0.1,
+                        b: self.background_color.b + 0.1,
+                        a: 1.0,
+                    };
+                    return true;
+                }
+            }
+            _ => {}
+        }
         false
     }
 
@@ -117,12 +141,7 @@ impl<'a> State<'a> {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.1,
-                            g: 0.2,
-                            b: 0.3,
-                            a: 1.0,
-                        }),
+                        load: wgpu::LoadOp::Clear(self.background_color),
                         store: wgpu::StoreOp::Store,
                     },
                 })],

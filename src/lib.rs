@@ -22,6 +22,7 @@ pub async fn run() {
         }
     }
      
+    log::info!("Starting up");
     let event_loop = EventLoop::new().unwrap();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
 
