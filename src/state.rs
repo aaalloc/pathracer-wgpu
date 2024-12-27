@@ -1,7 +1,8 @@
 use wgpu::util::DeviceExt;
 use winit::{event::WindowEvent, window::Window};
 
-use crate::Vertex;
+use crate::vertex::Vertex;
+
 
 pub struct State<'a> {
     surface: wgpu::Surface<'a>,
