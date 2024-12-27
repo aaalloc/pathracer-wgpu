@@ -19,12 +19,40 @@ pub struct State<'a> {
     background_color: wgpu::Color,
 }
 
-const RGB_TRIANGLE: &[Vertex] = &[
-    Vertex { position: [0.0, 0.5, 0.0], color: [1.0, 0.0, 0.0] },
-    Vertex { position: [-0.5, -0.5, 0.0], color: [0.0, 1.0, 0.0] },
-    Vertex { position: [0.5, -0.5, 0.0], color: [0.0, 0.0, 1.0] },
+// const RGB_TRIANGLE: &[Vertex] = &[
+//     Vertex { position: [0.0, 0.5, 0.0], color: [1.0, 0.0, 0.0] },
+//     Vertex { position: [-0.5, -0.5, 0.0], color: [0.0, 1.0, 0.0] },
+//     Vertex { position: [0.5, -0.5, 0.0], color: [0.0, 0.0, 1.0] },
+// ];
+
+const VERTICES: &[Vertex] = &[
+    Vertex {
+        position: [-0.5, 0.5, 0.0],
+        tex_coords: [0.0, 0.0, 0.0],
+    },
+    Vertex {
+        position: [-0.5, -0.5, 0.0],
+        tex_coords: [0.0, 1.0, 0.0],
+    },
+    Vertex {
+        position: [0.5, -0.5, 0.0],
+        tex_coords: [1.0, 1.0, 0.0],
+    },
+    Vertex {
+        position: [-0.5, 0.5, 0.0],
+        tex_coords: [0.0, 0.0, 0.0],
+    },
+    Vertex {
+        position: [0.5, -0.5 , 0.0],
+        tex_coords: [1.0, 1.0, 0.0],
+    },
+    Vertex {
+        position: [0.5, 0.5, 0.0],
+        tex_coords: [1.0, 0.0, 0.0],
+    },
 ];
 
+const VERTICES_LEN: usize = VERTICES.len();
 
 impl<'a> State<'a> {
     pub async fn new(window: &'a Window) -> State<'a> {
@@ -58,7 +86,10 @@ impl<'a> State<'a> {
                 required_limits: if cfg!(target_arch = "wasm32") {
                     wgpu::Limits::downlevel_webgl2_defaults()
                 } else {
-                    wgpu::Limits::default()
+                    wgpu::Limits {
+                        max_storage_buffer_binding_size: 512_u32 << 20,
+                        ..Default::default()
+                    }
                 },
                 label: None,
                 memory_hints: Default::default(),
@@ -146,7 +177,7 @@ impl<'a> State<'a> {
         let vertex_buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("Vertex buffer"),
-                contents: bytemuck::cast_slice(RGB_TRIANGLE),
+                contents: bytemuck::cast_slice(VERTICES),
                 usage: wgpu::BufferUsages::VERTEX,
             }
         );
@@ -232,11 +263,9 @@ impl<'a> State<'a> {
                 timestamp_writes: None,
             });
 
-            // Draw the triangle
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            // 0..3 because RGB_TRIANGLE is composed of 3 vertices
-            render_pass.draw(0..3, 0..1);
+            render_pass.draw(0..VERTICES_LEN as u32, 0..1);
         }
     
         // submit will accept anything that implements IntoIter
