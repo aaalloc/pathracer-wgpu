@@ -1,5 +1,5 @@
 use pathracer_wgpu::run;
 
 fn main() {
-    run();
+    pollster::block_on(run());
 }
