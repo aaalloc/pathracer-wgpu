@@ -1,4 +1,7 @@
+use wgpu::util::DeviceExt;
 use winit::{event::WindowEvent, window::Window};
+
+use crate::Vertex;
 
 pub struct State<'a> {
     surface: wgpu::Surface<'a>,
@@ -11,8 +14,16 @@ pub struct State<'a> {
     // unsafe references to the window's resources.
     window: &'a Window,
     render_pipeline: wgpu::RenderPipeline,
+    vertex_buffer: wgpu::Buffer,
     background_color: wgpu::Color,
 }
+
+const RGB_TRIANGLE: &[Vertex] = &[
+    Vertex { position: [0.0, 0.5, 0.0], color: [1.0, 0.0, 0.0] },
+    Vertex { position: [-0.5, -0.5, 0.0], color: [0.0, 1.0, 0.0] },
+    Vertex { position: [0.5, -0.5, 0.0], color: [0.0, 0.0, 1.0] },
+];
+
 
 impl<'a> State<'a> {
     pub async fn new(window: &'a Window) -> State<'a> {
@@ -93,7 +104,9 @@ impl<'a> State<'a> {
                 vertex: wgpu::VertexState {
                     module: &shader,
                     entry_point: Some("vs_main"),
-                    buffers: &[], // 2.
+                    buffers: &[
+                        Vertex::desc(),
+                    ],
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
                 },
                 fragment: Some(wgpu::FragmentState {
@@ -118,14 +131,22 @@ impl<'a> State<'a> {
                     // Requires Features::CONSERVATIVE_RASTERIZATION
                     conservative: false,
                 },
-                depth_stencil: None, // 1.
+                depth_stencil: None,
                 multisample: wgpu::MultisampleState {
-                    count: 1, // 2.
-                    mask: !0, // 3.
-                    alpha_to_coverage_enabled: false, // 4.
+                    count: 1,
+                    mask: !0,
+                    alpha_to_coverage_enabled: false,
                 },
-                multiview: None, // 5.
-                cache: None, // 6.
+                multiview: None,
+                cache: None,
+            }
+        );
+
+        let vertex_buffer = device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("Vertex buffer"),
+                contents: bytemuck::cast_slice(RGB_TRIANGLE),
+                usage: wgpu::BufferUsages::VERTEX,
             }
         );
 
@@ -137,6 +158,7 @@ impl<'a> State<'a> {
             config,
             size,
             render_pipeline,
+            vertex_buffer,
             background_color: wgpu::Color {
                 r: 0.1,
                 g: 0.2,
@@ -211,6 +233,8 @@ impl<'a> State<'a> {
 
             // Draw the triangle
             render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+            // 0..3 because RGB_TRIANGLE is composed of 3 vertices
             render_pass.draw(0..3, 0..1);
         }
     
