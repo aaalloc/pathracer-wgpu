@@ -8,7 +8,7 @@ use winit::{
 };
 
 mod state;
-use state::RenderContext;
+use state::{RenderContext, Scene, Sphere};
 
 mod vertex;
 mod gpu_buffer;
@@ -65,8 +65,20 @@ pub fn init(width: u32, height: u32) -> (winit::window::Window, winit::event_loo
 #[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]
 pub async fn run() {    
     let (window, event_loop) = init(900, 450);
+    let scenes = Scene {
+        spheres: vec![
+            Sphere::new(
+                glm::vec3(0.0, -100.5, -1.0),
+                100.0,
+            ),
+            Sphere::new(
+                glm::vec3(0.0, 0.0, -1.0),
+                0.5,
+            ),
+        ],
+    };
 
-    let mut context = RenderContext::new(&window).await;
+    let mut context = RenderContext::new(&window, &scenes).await;
     let mut surface_configured = false;
     event_loop.run(move |event, control_flow| {
         match event {

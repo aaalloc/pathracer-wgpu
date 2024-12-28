@@ -1,7 +1,7 @@
 use wgpu::util::DeviceExt;
 use winit::{event::WindowEvent, window::Window};
 
-use crate::{camera::GpuCamera, gpu_buffer::UniformBuffer, vertex::Vertex};
+use crate::{camera::GpuCamera, gpu_buffer::{StorageBuffer, UniformBuffer}, vertex::Vertex};
 
 
 pub struct RenderContext<'a> {
@@ -18,6 +18,31 @@ pub struct RenderContext<'a> {
     vertex_buffer: wgpu::Buffer,
     image_bind_group: wgpu::BindGroup,
     camera_buffer: UniformBuffer,
+    scene_bind_group: wgpu::BindGroup,
+}
+
+pub struct Scene {
+    pub spheres: Vec<Sphere>,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct Sphere {
+    center: glm::Vec4,  // 0 byte offset
+    radius: f32,        // 16 byte offset
+    material_idx: u32,  // 20 byte offset
+    _padding: [u32; 2], // 24 byte offset, 8 bytes size
+}
+
+impl Sphere {
+    pub fn new(center: glm::Vec3, radius: f32) -> Self {
+        Self {
+            center: glm::vec3_to_vec4(&center),
+            radius,
+            material_idx: 0,
+            _padding: [0; 2],
+        }
+    }
 }
 
 // const RGB_TRIANGLE: &[Vertex] = &[
@@ -61,7 +86,10 @@ const VERTICES: &[Vertex] = &[
 const VERTICES_LEN: usize = VERTICES.len();
 
 impl<'a> RenderContext<'a> {
-    pub async fn new(window: &'a Window) -> RenderContext<'a> {
+    pub async fn new(
+        window: &'a Window,
+        scene: &Scene,
+    ) -> RenderContext<'a> {
         let size = window.inner_size();
 
         // The instance is a handle to our GPU
@@ -119,8 +147,35 @@ impl<'a> RenderContext<'a> {
             )
         };
 
+        let (scene_bind_group_layout, scene_bind_group) = {
+            let sphere_buffer = StorageBuffer::new_from_bytes(
+                &device,
+                bytemuck::cast_slice(scene.spheres.as_slice()),
+                0_u32,
+                Some("scene buffer"),
+            );
+            
+            let scene_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[
+                    sphere_buffer.layout(wgpu::ShaderStages::FRAGMENT, true),
+                ],
+                label: Some("scene layout"),
+            });
+            
+            let scene_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                layout: &scene_bind_group_layout,
+                entries: &[
+                    sphere_buffer.binding(),
+                ],
+                label: Some("scene bind group"),
+            });
+
+            (scene_bind_group_layout, scene_bind_group)
+        };
+
         let shader = device.create_shader_module(
-            wgpu::include_wgsl!("shader.wgsl")
+            wgpu::include_wgsl!("shader.wgsl"),
         );
 
         let surface_caps = surface.get_capabilities(&adapter);
@@ -163,6 +218,7 @@ impl<'a> RenderContext<'a> {
             label: Some("Render Pipeline Layout"),
             bind_group_layouts: &[
                 &image_bind_group_layout,
+                &scene_bind_group_layout,
             ],
             push_constant_ranges: &[],
         });
@@ -232,6 +288,7 @@ impl<'a> RenderContext<'a> {
             vertex_buffer,
             image_bind_group,
             camera_buffer,
+            scene_bind_group
         }
     }
 
@@ -304,6 +361,7 @@ impl<'a> RenderContext<'a> {
 
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, &self.image_bind_group, &[]);
+            render_pass.set_bind_group(1, &self.scene_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.draw(0..VERTICES_LEN as u32, 0..1);
         }

@@ -9,7 +9,13 @@ struct VertexOutput {
 };
 
 
+const MIN_T = 0.001f;
+const MAX_T = 1000f;
+
+
 @group(0) @binding(0) var<uniform> camera: Camera;
+
+@group(1) @binding(0) var<storage, read> spheres: array<Sphere>;
 
 @vertex
 fn vs_main(
@@ -51,28 +57,83 @@ struct Ray {
     direction: vec3<f32>,
 };
 
-fn hit_sphere(center: vec3<f32>, radius: f32, ray: Ray) -> f32 {
-    let oc = ray.origin - center;
+struct Sphere {
+    center: vec4<f32>,
+    radius: f32,
+    material_index: u32,
+};
+
+struct HitRecord {
+    p: vec3<f32>,
+    normal: vec3<f32>,
+    t: f32,
+};
+
+
+fn hit_sphere(
+    sphere_index: u32,
+    ray: Ray,
+    ray_min: f32,
+    ray_max: f32,
+    hit: ptr<function, HitRecord>,
+) -> bool {
+    let sphere = spheres[sphere_index];
+
+    let oc = ray.origin - sphere.center.xyz;
     let a = dot(ray.direction, ray.direction);
     let b = 2.0 * dot(oc, ray.direction);
-    let c = dot(oc, oc) - radius * radius;
+    let c = dot(oc, oc) - sphere.radius * sphere.radius;
     let discriminant = b * b - 4.0 * a * c;
+    
     if discriminant < 0.0 {
-        return -1.0;
-    } else {
-        return (-b - sqrt(discriminant)) / (2.0 * a);
+        return false;
     }
+
+    let sqrtd = sqrt(discriminant);
+    var root = (-b - sqrtd) / (2.0 * a);
+    if root < ray_min || root > ray_max {
+        root = (-b + sqrtd) / (2.0 * a);
+        if root < ray_min || root > ray_max {
+            return false;
+        }
+    }
+
+    let t = root;
+    let p = ray.origin + t * ray.direction;
+    let normal = (p - sphere.center.xyz) / sphere.radius;
+    *hit = HitRecord(p, normal, t);
+    return true;
+}
+
+fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool{
+    var closest_so_far = MAX_T;
+    var  hit_anything = false;
+
+    for (var i = 0u; i < arrayLength(&spheres); i = i + 1u) {
+        var t = HitRecord();
+        if hit_sphere(i, ray, MIN_T, MAX_T, &t) {
+            hit_anything = true;
+            closest_so_far = t.t;
+            *intersection = t;
+        }
+    }
+
+    return hit_anything;
 }
 
 fn ray_color(ray: Ray) -> vec3<f32> {
-    let t = hit_sphere(vec3<f32>(0.0, 0.0, -1.0), 0.5, ray);
-    if t > 0.0 {
-        let N = normalize(ray.origin + t * ray.direction - vec3<f32>(0.0, 0.0, -1.0));
-        return 0.5 * vec3<f32>(N.x + 1.0, N.y + 1.0, N.z + 1.0);
-    }
+    var color = vec3<f32>(0.0);
+    var intersection = HitRecord();
 
-    let a = 0.5 * (ray.direction.y + 1.0);
-    return (1.0 - a) * vec3<f32>(1.0, 1.0, 1.0) + a * vec3<f32>(0.5, 0.7, 1.0);
+    if check_intersection(ray, &intersection) {
+        let N = normalize(intersection.normal);
+        color += 0.5 * vec3<f32>(N.x + 1.0, N.y + 1.0, N.z + 1.0);
+    } else {
+        let a = 0.5 * (ray.direction.y + 1.0);
+        color += (1.0 - a) * vec3<f32>(1.0, 1.0, 1.0) + a * vec3<f32>(0.5, 0.7, 1.0);
+    }
+    return color;
+
 }
 
 
