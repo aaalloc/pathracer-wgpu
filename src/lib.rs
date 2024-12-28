@@ -29,11 +29,15 @@ pub async fn run() {
     }
      
     log::info!("Starting up");
-    let event_loop = EventLoop::new().unwrap();
-    // set siwe of window
+    let event_loop: EventLoop<()> = EventLoop::new().unwrap();
+
+    let image_width = 900;
+    let image_height = 450;
+
+
     let window = WindowBuilder::new()
-        .with_title("Pathracer")
-        .with_inner_size(winit::dpi::PhysicalSize::new(450, 400))
+        .with_title("Raytracer")
+        .with_inner_size(winit::dpi::PhysicalSize::new(image_width, image_height))
         .build(&event_loop)
         .unwrap();
     
@@ -43,7 +47,7 @@ pub async fn run() {
         // Winit prevents sizing with CSS, so we have to set
         // the size manually when on web.
         use winit::dpi::PhysicalSize;
-        let _ = window.request_inner_size(PhysicalSize::new(450, 400));
+        let _ = window.request_inner_size(PhysicalSize::new(image_width, image_height));
         
         use winit::platform::web::WindowExtWebSys;
         web_sys::window()

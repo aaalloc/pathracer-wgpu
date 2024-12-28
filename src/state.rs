@@ -106,8 +106,8 @@ impl<'a> State<'a> {
         let camera_buffer = {
             let camera = GpuCamera::new(
                 (
-                    window.inner_size().width, 
-                    window.inner_size().height
+                    size.width, 
+                    size.height
                 )
             );
 
