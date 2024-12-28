@@ -4,12 +4,11 @@ use wasm_bindgen::prelude::*;
 use winit::{
     event::*,
     event_loop::EventLoop,
-    keyboard::{KeyCode, PhysicalKey},
-    window::WindowBuilder,
+    keyboard::{KeyCode, PhysicalKey}, window::WindowBuilder,
 };
 
 mod state;
-use state::State;
+use state::RenderContext;
 
 mod vertex;
 mod gpu_buffer;
@@ -17,8 +16,8 @@ mod gpu_buffer;
 mod camera;
 extern crate nalgebra_glm as glm;
 
-#[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]
-pub async fn run() {
+
+pub fn init(width: u32, height: u32) -> (winit::window::Window, winit::event_loop::EventLoop<()>) {
     cfg_if::cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
             std::panic::set_hook(Box::new(console_error_panic_hook::hook));
@@ -31,13 +30,12 @@ pub async fn run() {
     log::info!("Starting up");
     let event_loop: EventLoop<()> = EventLoop::new().unwrap();
 
-    let image_width = 900;
-    let image_height = 450;
+
 
 
     let window = WindowBuilder::new()
         .with_title("Raytracer")
-        .with_inner_size(winit::dpi::PhysicalSize::new(image_width, image_height))
+        .with_inner_size(winit::dpi::PhysicalSize::new(width, height))
         .build(&event_loop)
         .unwrap();
     
@@ -60,16 +58,22 @@ pub async fn run() {
             })
             .expect("Couldn't append canvas to document body.");
     }
-    
 
-    let mut state = State::new(&window).await;
+    return (window, event_loop)
+}
+
+#[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]
+pub async fn run() {    
+    let (window, event_loop) = init(900, 450);
+
+    let mut context = RenderContext::new(&window).await;
     let mut surface_configured = false;
     event_loop.run(move |event, control_flow| {
         match event {
             Event::WindowEvent {
                 ref event,
                 window_id,
-            } if window_id == state.window().id() => if !state.input(event) {
+            } if window_id == context.window().id() => if !context.input(event) {
                 match event {
                     WindowEvent::CloseRequested
                     | WindowEvent::KeyboardInput {
@@ -82,17 +86,17 @@ pub async fn run() {
                         ..
                     } => control_flow.exit(),
                     WindowEvent::RedrawRequested => {
-                        state.window().request_redraw();
+                        context.window().request_redraw();
                         if !surface_configured {
                             log::info!("Surface not configured yet");
                             return;
                         }
                         
-                        state.update();
-                        match state.render() {
+                        context.update();
+                        match context.render() {
                             Ok(_) => {},
                             Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated)
-                                => state.resize(state.size),
+                                => context.resize(context.size),
                             Err(wgpu::SurfaceError::OutOfMemory) => {
                                 log::error!("Out of memory");
                                 control_flow.exit();
@@ -105,7 +109,7 @@ pub async fn run() {
                     },
                     WindowEvent::Resized(physical_size) => {
                         surface_configured = true;
-                        state.resize(*physical_size);
+                        context.resize(*physical_size);
                     },
                     _ => {}
                 }

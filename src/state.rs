@@ -4,7 +4,7 @@ use winit::{event::WindowEvent, window::Window};
 use crate::{camera::GpuCamera, gpu_buffer::UniformBuffer, vertex::Vertex};
 
 
-pub struct State<'a> {
+pub struct RenderContext<'a> {
     surface: wgpu::Surface<'a>,
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -60,8 +60,8 @@ const VERTICES: &[Vertex] = &[
 
 const VERTICES_LEN: usize = VERTICES.len();
 
-impl<'a> State<'a> {
-    pub async fn new(window: &'a Window) -> State<'a> {
+impl<'a> RenderContext<'a> {
+    pub async fn new(window: &'a Window) -> RenderContext<'a> {
         let size = window.inner_size();
 
         // The instance is a handle to our GPU
