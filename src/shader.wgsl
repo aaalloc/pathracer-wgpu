@@ -8,6 +8,13 @@ struct VertexOutput {
     @location(0) tex_coords: vec2<f32>,
 };
 
+struct CameraUniform {
+    view_proj: mat4x4<f32>,
+    view_position: vec4<f32>,
+};
+@group(0) @binding(0)
+var<uniform> camera: CameraUniform;
+
 
 fn jenkinsHash(input: u32) -> u32 {
     var x = input;
@@ -47,17 +54,27 @@ fn vs_main(
 ) -> VertexOutput {
     var out: VertexOutput;
     out.tex_coords = model.tex_coords;
-    // 1.0 to 0.0 to put in 2D space
-    out.clip_position = vec4<f32>(model.position, 1.0);
+    out.clip_position = camera.view_proj * vec4<f32>(model.position, 1.0);
     return out;
 }
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+    let resoltion = u32(512u);
     let scaleFactor = 1.0;
-    let u = in.clip_position.x * scaleFactor;
-    let v = in.clip_position.y * scaleFactor;
+    let u = in.tex_coords.x * scaleFactor * f32(resoltion);
+    let v = in.tex_coords.y * scaleFactor * f32(resoltion);
 
-    var noiseState: u32 = initRng(vec2<u32>(u32(u), u32(v)), vec2<u32>(512u, 512u), 0u);
-    return vec4<f32>(rngNextFloat(&noiseState), rngNextFloat(&noiseState), rngNextFloat(&noiseState), 1.0);
+    var noiseState: u32 = initRng(
+        vec2<u32>(u32(u), u32(v)), 
+        vec2<u32>(resoltion, resoltion), 
+        0u
+    );
+    
+    return vec4<f32>(
+        rngNextFloat(&noiseState), 
+        rngNextFloat(&noiseState), 
+        rngNextFloat(&noiseState),
+        1.0
+    );
 }

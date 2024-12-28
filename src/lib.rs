@@ -12,7 +12,7 @@ mod state;
 use state::State;
 
 mod vertex;
-
+mod camera;
 
 #[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]
 pub async fn run() {
@@ -51,6 +51,7 @@ pub async fn run() {
 
     let mut state = State::new(&window).await;
     let mut surface_configured = false;
+    let mut last_render_time = instant::Instant::now();
     event_loop.run(move |event, control_flow| {
         match event {
             Event::WindowEvent {
@@ -74,8 +75,10 @@ pub async fn run() {
                             log::info!("Surface not configured yet");
                             return;
                         }
-                        
-                        state.update();
+                        let now = instant::Instant::now();
+                        let dt = now - last_render_time;
+                        last_render_time = now;
+                        state.update(dt);
                         match state.render() {
                             Ok(_) => {},
                             Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated)

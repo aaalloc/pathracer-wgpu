@@ -1,7 +1,7 @@
 use wgpu::util::DeviceExt;
-use winit::{event::WindowEvent, window::Window};
+use winit::{event::{KeyEvent, WindowEvent}, keyboard::PhysicalKey, window::Window};
 
-use crate::vertex::Vertex;
+use crate::{camera::{Camera, CameraController, CameraUniform, Projection}, vertex::Vertex};
 
 
 pub struct State<'a> {
@@ -14,6 +14,13 @@ pub struct State<'a> {
     // it gets dropped after it as the surface contains
     // unsafe references to the window's resources.
     window: &'a Window,
+    camera: Camera,
+    pub mouse_pressed: bool,
+    projection: Projection,
+    pub camera_controller: CameraController,
+    camera_uniform: CameraUniform,
+    camera_buffer: wgpu::Buffer,
+    camera_bind_group: wgpu::BindGroup,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     background_color: wgpu::Color,
@@ -121,10 +128,71 @@ impl<'a> State<'a> {
             desired_maximum_frame_latency: 2,
         };
 
+
+        let camera = Camera::new(
+            (0.0, 5.0, 10.0),
+            cgmath::Deg(-90.0),
+            cgmath::Deg(-20.0)
+        );
+        let projection = Projection::new(
+            config.width,
+            config.height,
+            cgmath::Deg(45.0), 
+            0.1, 
+            100.0
+        );
+    
+        let mut camera_uniform = CameraUniform::new();
+        camera_uniform.update_view_proj(&camera, &projection);
+        let camera_controller = CameraController::new(
+            4.0, 
+            0.4
+        );
+        
+        let camera_buffer = device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("Camera Buffer"),
+                contents: bytemuck::cast_slice(&[camera_uniform]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            }
+        );
+
+        let camera_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }
+            ],
+            label: Some("camera_bind_group_layout"),
+        });
+        
+         
+        let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &camera_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: camera_buffer.as_entire_binding(),
+                }
+            ],
+            label: Some("camera_bind_group"),
+        });
+        
+         
+
         let render_pipeline_layout =
         device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[],
+            bind_group_layouts: &[
+                &camera_bind_group_layout,
+            ],
             push_constant_ranges: &[],
         });
         
@@ -182,8 +250,16 @@ impl<'a> State<'a> {
             }
         );
 
+
         Self {
             window,
+            camera,
+            mouse_pressed: false,
+            projection,
+            camera_controller,
+            camera_uniform,
+            camera_buffer,
+            camera_bind_group,
             surface,
             device,
             queue,
@@ -206,6 +282,7 @@ impl<'a> State<'a> {
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         if new_size.width > 0 && new_size.height > 0 {
+            self.projection.resize(new_size.width, new_size.height);
             self.size = new_size;
             self.config.width = new_size.width;
             self.config.height = new_size.height;
@@ -215,26 +292,23 @@ impl<'a> State<'a> {
 
     pub fn input(&mut self, event: &WindowEvent) -> bool {
         match event {
-            WindowEvent::MouseInput { button, state, .. } => {
-                log::info!("Mouse input event");
-                let is_left_button = *button == winit::event::MouseButton::Left;
-                let is_pressed = *state == winit::event::ElementState::Pressed;
-                if is_left_button && is_pressed {
-                    self.background_color = wgpu::Color {
-                        r: self.background_color.r + 0.1,
-                        g: self.background_color.g + 0.1,
-                        b: self.background_color.b + 0.1,
-                        a: 1.0,
-                    };
-                    return true;
-                }
-            }
-            _ => {}
+            WindowEvent::KeyboardInput {
+                event:
+                    KeyEvent {
+                        physical_key: PhysicalKey::Code(key),
+                        state,
+                        ..
+                    },
+                ..
+            } => self.camera_controller.process_keyboard(*key, *state),
+            _ => false,
         }
-        false
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self, dt: instant::Duration) {
+        self.camera_controller.update_camera(&mut self.camera, dt);
+        self.camera_uniform.update_view_proj(&self.camera, &self.projection);
+        self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform]));
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
@@ -264,7 +338,9 @@ impl<'a> State<'a> {
             });
 
             render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+            
             render_pass.draw(0..VERTICES_LEN as u32, 0..1);
         }
     
