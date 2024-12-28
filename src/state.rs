@@ -1,7 +1,7 @@
 use wgpu::util::DeviceExt;
 use winit::{event::WindowEvent, window::Window};
 
-use crate::vertex::Vertex;
+use crate::{camera::GpuCamera, gpu_buffer::UniformBuffer, vertex::Vertex};
 
 
 pub struct State<'a> {
@@ -16,7 +16,9 @@ pub struct State<'a> {
     window: &'a Window,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
-    background_color: wgpu::Color,
+    image_bind_group: wgpu::BindGroup,
+    frame_data_buffer: UniformBuffer,
+    camera_buffer: UniformBuffer,
 }
 
 // const RGB_TRIANGLE: &[Vertex] = &[
@@ -25,30 +27,35 @@ pub struct State<'a> {
 //     Vertex { position: [0.5, -0.5, 0.0], color: [0.0, 0.0, 1.0] },
 // ];
 
+// TODO: Pass from 2 triangles to 1 triangle
+// https://webgpufundamentals.org/webgpu/lessons/webgpu-large-triangle-to-cover-clip-space.html
+
+// https://sotrh.github.io/learn-wgpu/beginner/tutorial5-textures/#the-results
+// tex needs to be flipped somehow
 const VERTICES: &[Vertex] = &[
     Vertex {
-        position: [-0.5, 0.5, 0.0],
-        tex_coords: [0.0, 0.0],
-    },
-    Vertex {
-        position: [-0.5, -0.5, 0.0],
+        position: [-1.0, 1.0],
         tex_coords: [0.0, 1.0],
     },
     Vertex {
-        position: [0.5, -0.5, 0.0],
-        tex_coords: [1.0, 1.0],
-    },
-    Vertex {
-        position: [-0.5, 0.5, 0.0],
+        position: [-1.0, -1.0],
         tex_coords: [0.0, 0.0],
     },
     Vertex {
-        position: [0.5, -0.5 , 0.0],
-        tex_coords: [1.0, 1.0],
+        position: [1.0, -1.0],
+        tex_coords: [1.0, 0.0],
     },
     Vertex {
-        position: [0.5, 0.5, 0.0],
+        position: [-1.0, 1.0],
+        tex_coords: [0.0,1.0],
+    },
+    Vertex {
+        position: [1.0, -1.0],
         tex_coords: [1.0, 0.0],
+    },
+    Vertex {
+        position: [1.0, 1.0],
+        tex_coords: [1.0, 1.0],
     },
 ];
 
@@ -97,6 +104,29 @@ impl<'a> State<'a> {
             None, // Trace path
         ).await.unwrap();
 
+        let frame_data_buffer = UniformBuffer::new(
+            &device, 
+            16_u64,
+            0_u32, 
+            Some("frame data buffer")
+        );
+
+        let camera_buffer = {
+            let camera = GpuCamera::new(
+                (
+                    window.inner_size().width, 
+                    window.inner_size().height
+                )
+            );
+
+            UniformBuffer::new_from_bytes(
+                &device,
+                bytemuck::bytes_of(&camera),
+                1_u32,
+                Some("camera buffer"),
+            )
+        };
+
         let shader = device.create_shader_module(
             wgpu::include_wgsl!("shader.wgsl")
         );
@@ -121,10 +151,29 @@ impl<'a> State<'a> {
             desired_maximum_frame_latency: 2,
         };
 
+        let image_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                frame_data_buffer.layout(wgpu::ShaderStages::FRAGMENT),
+                camera_buffer.layout(wgpu::ShaderStages::FRAGMENT),
+            ],
+            label: Some("image layout"),
+        });
+
+        let image_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &image_bind_group_layout,
+            entries: &[
+                frame_data_buffer.binding(),
+                camera_buffer.binding(),
+            ],
+            label: Some("image bind group"),
+        });
+
         let render_pipeline_layout =
         device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[],
+            bind_group_layouts: &[
+                &image_bind_group_layout,
+            ],
             push_constant_ranges: &[],
         });
         
@@ -191,12 +240,9 @@ impl<'a> State<'a> {
             size,
             render_pipeline,
             vertex_buffer,
-            background_color: wgpu::Color {
-                r: 0.1,
-                g: 0.2,
-                b: 0.3,
-                a: 1.0,
-            },
+            frame_data_buffer,
+            image_bind_group,
+            camera_buffer,
         }
     }
 
@@ -215,23 +261,8 @@ impl<'a> State<'a> {
 
     pub fn input(&mut self, event: &WindowEvent) -> bool {
         match event {
-            WindowEvent::MouseInput { button, state, .. } => {
-                log::info!("Mouse input event");
-                let is_left_button = *button == winit::event::MouseButton::Left;
-                let is_pressed = *state == winit::event::ElementState::Pressed;
-                if is_left_button && is_pressed {
-                    self.background_color = wgpu::Color {
-                        r: self.background_color.r + 0.1,
-                        g: self.background_color.g + 0.1,
-                        b: self.background_color.b + 0.1,
-                        a: 1.0,
-                    };
-                    return true;
-                }
-            }
-            _ => {}
+            _ => false,
         }
-        false
     }
 
     pub fn update(&mut self) {
@@ -253,7 +284,12 @@ impl<'a> State<'a> {
                         view: &view,
                         resolve_target: None,
                         ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(self.background_color),
+                            load: wgpu::LoadOp::Clear(wgpu::Color {
+                                r: 0.012,
+                                g: 0.012,
+                                b: 0.012,
+                                a: 1.0,
+                            }),
                             store: wgpu::StoreOp::Store,
                         },
                     })
@@ -263,7 +299,32 @@ impl<'a> State<'a> {
                 timestamp_writes: None,
             });
 
+            self.queue.write_buffer(
+                &self.frame_data_buffer.handle(),
+                0,
+                bytemuck::cast_slice(&[
+                    450.0_f32,
+                    400.0_f32,
+                    0.0_f32,
+                ]),
+            );
+
+            {
+                let camera = GpuCamera::new(
+                    (
+                        self.size.width, 
+                        self.size.height
+                    )
+                );
+                self.queue.write_buffer(
+                    &self.camera_buffer.handle(),
+                    0,
+                    bytemuck::bytes_of(&camera),
+                );
+            }
+
             render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_bind_group(0, &self.image_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.draw(0..VERTICES_LEN as u32, 0..1);
         }

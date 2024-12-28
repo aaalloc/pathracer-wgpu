@@ -12,7 +12,10 @@ mod state;
 use state::State;
 
 mod vertex;
+mod gpu_buffer;
 
+mod camera;
+extern crate nalgebra_glm as glm;
 
 #[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]
 pub async fn run() {
@@ -27,7 +30,13 @@ pub async fn run() {
      
     log::info!("Starting up");
     let event_loop = EventLoop::new().unwrap();
-    let window = WindowBuilder::new().build(&event_loop).unwrap();
+    // set siwe of window
+    let window = WindowBuilder::new()
+        .with_title("Pathracer")
+        .with_inner_size(winit::dpi::PhysicalSize::new(450, 400))
+        .build(&event_loop)
+        .unwrap();
+    
 
     #[cfg(target_arch = "wasm32")]
     {
