@@ -9,8 +9,7 @@ struct VertexOutput {
 };
 
 
-@group(0) @binding(0) var<uniform> frame_data: vec4<u32>;
-@group(0) @binding(1) var<uniform> camera: Camera;
+@group(0) @binding(0) var<uniform> camera: Camera;
 
 @vertex
 fn vs_main(
@@ -27,9 +26,6 @@ fn vs_main(
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let u = in.tex_coords.x;
     let v = in.tex_coords.y;
-
-    let image_width = frame_data.x;
-    let image_height = frame_data.y;
 
     let origin = camera.eye;
     let direction = camera.lowerLeftCorner + u * camera.horizontal + v * camera.vertical - origin;

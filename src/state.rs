@@ -17,7 +17,6 @@ pub struct State<'a> {
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     image_bind_group: wgpu::BindGroup,
-    frame_data_buffer: UniformBuffer,
     camera_buffer: UniformBuffer,
 }
 
@@ -104,13 +103,6 @@ impl<'a> State<'a> {
             None, // Trace path
         ).await.unwrap();
 
-        let frame_data_buffer = UniformBuffer::new(
-            &device, 
-            16_u64,
-            0_u32, 
-            Some("frame data buffer")
-        );
-
         let camera_buffer = {
             let camera = GpuCamera::new(
                 (
@@ -122,7 +114,7 @@ impl<'a> State<'a> {
             UniformBuffer::new_from_bytes(
                 &device,
                 bytemuck::bytes_of(&camera),
-                1_u32,
+                0_u32,
                 Some("camera buffer"),
             )
         };
@@ -153,7 +145,6 @@ impl<'a> State<'a> {
 
         let image_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[
-                frame_data_buffer.layout(wgpu::ShaderStages::FRAGMENT),
                 camera_buffer.layout(wgpu::ShaderStages::FRAGMENT),
             ],
             label: Some("image layout"),
@@ -162,7 +153,6 @@ impl<'a> State<'a> {
         let image_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &image_bind_group_layout,
             entries: &[
-                frame_data_buffer.binding(),
                 camera_buffer.binding(),
             ],
             label: Some("image bind group"),
@@ -240,7 +230,6 @@ impl<'a> State<'a> {
             size,
             render_pipeline,
             vertex_buffer,
-            frame_data_buffer,
             image_bind_group,
             camera_buffer,
         }
@@ -298,16 +287,6 @@ impl<'a> State<'a> {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
-
-            self.queue.write_buffer(
-                &self.frame_data_buffer.handle(),
-                0,
-                bytemuck::cast_slice(&[
-                    450.0_f32,
-                    400.0_f32,
-                    0.0_f32,
-                ]),
-            );
 
             {
                 let camera = GpuCamera::new(
