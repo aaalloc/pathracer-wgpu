@@ -7,8 +7,8 @@ use winit::{
     keyboard::{KeyCode, PhysicalKey}, window::WindowBuilder,
 };
 
-mod state;
-use state::{RenderContext, Scene, Sphere};
+mod render_context;
+use render_context::{RenderContext, Scene, Sphere};
 
 mod vertex;
 mod gpu_buffer;
