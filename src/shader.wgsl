@@ -67,6 +67,7 @@ struct HitRecord {
     p: vec3<f32>,
     normal: vec3<f32>,
     t: f32,
+    front_face: bool,
 };
 
 
@@ -100,8 +101,12 @@ fn hit_sphere(
 
     let t = root;
     let p = ray.origin + t * ray.direction;
-    let normal = (p - sphere.center.xyz) / sphere.radius;
-    *hit = HitRecord(p, normal, t);
+    var normal = (p - sphere.center.xyz) / sphere.radius;
+    let front_face = dot(ray.direction, normal) < 0.0;
+    if !front_face {
+        normal = -normal;
+    }
+    *hit = HitRecord(p, normal, t, front_face);
     return true;
 }
 
