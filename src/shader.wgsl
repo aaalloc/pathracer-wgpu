@@ -172,20 +172,18 @@ fn get_ray(rngState: ptr<function, u32>, x: f32, y: f32) -> Ray {
 
 
 
-const MAX_DEPTH = 10u;
+const MAX_DEPTH = 100u;
 fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
     var ray = first_ray;
-    var color = vec3<f32>(0.0);
+    var color = vec3<f32>(1.0);
     var intersection = HitRecord();
 
     for (var i = 0u; i < MAX_DEPTH; i += 1u)
     {
         if check_intersection(ray, &intersection)
         {
-            // color = 0.5 * (intersection.normal + vec3<f32>(1.0));
-            // let direction = random_on_hemisphere(rngState, intersection.normal);
             let direction = intersection.normal + random_in_unit_sphere(rngState);
-            color = 0.5 * direction;
+            color *= 0.5;
             ray = Ray(intersection.p, direction);
         } 
         else 
@@ -193,7 +191,7 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
             let direction = normalize(ray.direction);
             let a = 0.5 * (direction.y + 1.0);
             var sky = (1.0 - a) * vec3<f32>(1.0, 1.0, 1.0) + a * vec3<f32>(0.1, 0.6, 0.9);
-            color = sky;
+            color *= sky;
             break;
         }
     }
