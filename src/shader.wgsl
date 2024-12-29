@@ -8,12 +8,14 @@ struct VertexOutput {
     @location(0) tex_coords: vec2<f32>,
 };
 
-
+const PI = 3.1415927f;
 const MIN_T = 0.001f;
 const MAX_T = 1000f;
+
 const WIDTH = 900u;
 const HEIGHT = 450u;
 const SAMPLES_PER_PIXEL = 100u;
+const MAX_DEPTH = 3u;
 
 @group(0) @binding(0) var<uniform> camera: Camera;
 
@@ -34,9 +36,6 @@ fn vs_main(
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let u = in.tex_coords.x;
     let v = in.tex_coords.y;
-
-    let origin = camera.eye;
-    let direction = camera.lowerLeftCorner + u * camera.horizontal + v * camera.vertical - origin;
 
     let x = u32(u * f32(WIDTH));
     let y = u32(v * f32(HEIGHT));
@@ -124,7 +123,7 @@ fn hit_sphere(
 
 fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool{
     var closest_so_far = MAX_T;
-    var  hit_anything = false;
+    var hit_anything = false;
 
     for (var i = 0u; i < arrayLength(&spheres); i = i + 1u) {
         var t = HitRecord();
@@ -141,27 +140,52 @@ fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool{
 fn sample_pixel(rngState: ptr<function, u32>, x: f32, y: f32) -> vec3<f32> {
     var color = vec3<f32>(0.0);
     for (var i = 0u; i < SAMPLES_PER_PIXEL; i = i + 1u) {
-        let s = f32(x + rngNextFloat(rngState)) / f32(WIDTH);
-        let t = f32(y + rngNextFloat(rngState)) / f32(HEIGHT);
-        let ray = Ray(camera.eye, normalize(camera.lowerLeftCorner + s * camera.horizontal + t * camera.vertical - camera.eye));
-        color += ray_color(ray);
+        let ray = get_ray(rngState, x, y);
+        color += ray_color(ray, rngState);
     }
     return color / f32(SAMPLES_PER_PIXEL);
 }
 
-fn ray_color(ray: Ray) -> vec3<f32> {
-    var color = vec3<f32>(0.0);
-    var intersection = HitRecord();
+fn get_ray(rngState: ptr<function, u32>, x: f32, y: f32) -> Ray {
+    let u = f32(x + rngNextFloat(rngState)) / f32(WIDTH); 
+    let v = f32(y + rngNextFloat(rngState)) / f32(HEIGHT);
 
-    if check_intersection(ray, &intersection) {
-        let N = normalize(intersection.normal);
-        color += 0.5 * vec3<f32>(N.x + 1.0, N.y + 1.0, N.z + 1.0);
+    let origin = camera.eye;
+    let direction = camera.lowerLeftCorner + u * camera.horizontal + v * camera.vertical - origin;
+
+    return Ray(origin, direction);
+}
+
+
+
+fn random_on_hemisphere(rngState: ptr<function, u32>, normal: vec3<f32>) -> vec3<f32> {
+    let on_unit_sphere = random_in_unit_sphere(rngState);
+    if dot(on_unit_sphere, normal) > 0.0 {
+        return on_unit_sphere;
     } else {
+        return -on_unit_sphere;
+    }
+}
+
+fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
+    var ray = first_ray;
+    var color = vec3<f32>(0.0);
+
+    for (var i = 0u; i < MAX_DEPTH; i = i + 1u) {
+        var intersection = HitRecord();
+        if check_intersection(ray, &intersection) {
+            // color += 0.5 * (intersection.normal + vec3<f32>(1.0, 1.0, 1.0));
+            let direction = random_on_hemisphere(rngState, intersection.normal);
+            color += direction;
+            ray = Ray(intersection.p, direction);
+            continue; 
+        }
         let a = 0.5 * (ray.direction.y + 1.0);
-        color += (1.0 - a) * vec3<f32>(1.0, 1.0, 1.0) + a * vec3<f32>(0.5, 0.7, 1.0);
+        var sky = (1.0 - a) * vec3<f32>(1.0, 1.0, 1.0) + a * vec3<f32>(0.2, 0.7, 1.0);
+        color += sky;
+        break;
     }
     return color;
-
 }
 
 
@@ -181,6 +205,30 @@ fn initRng(pixel: vec2<u32>, resolution: vec2<u32>, frame: u32) -> u32 {
     return jenkinsHash(seed);
 }
 
+
+fn random_in_unit_disk(state: ptr<function, u32>) -> vec3<f32> {
+    let r = sqrt(rngNextFloat(state));
+    let theta = 2.0 * PI * rngNextFloat(state);
+
+    let x = r * cos(theta);
+    let y = r * sin(theta);
+
+    return vec3<f32>(x, y, 0.0);
+}
+
+
+fn random_in_unit_sphere(state: ptr<function, u32>) -> vec3<f32> {
+    let r = pow(rngNextFloat(state), 0.33333f);
+    let cosTheta = 1f - 2f * rngNextFloat(state);
+    let sinTheta = sqrt(1f - cosTheta * cosTheta);
+    let phi = 2f * PI * rngNextFloat(state);
+
+    let x = r * sinTheta * cos(phi);
+    let y = r * sinTheta * sin(phi);
+    let z = cosTheta;
+
+    return vec3(x, y, z);
+}
 
 fn rngNextInt(state: ptr<function, u32>) -> u32 {
     // PCG random number generator
