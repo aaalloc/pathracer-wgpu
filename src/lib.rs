@@ -45,7 +45,7 @@ pub fn init(width: u32, height: u32) -> (winit::window::Window, winit::event_loo
         // Winit prevents sizing with CSS, so we have to set
         // the size manually when on web.
         use winit::dpi::PhysicalSize;
-        let _ = window.request_inner_size(PhysicalSize::new(image_width, image_height));
+        let _ = window.request_inner_size(PhysicalSize::new(width, height));
         
         use winit::platform::web::WindowExtWebSys;
         web_sys::window()
