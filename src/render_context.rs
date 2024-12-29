@@ -1,7 +1,7 @@
 use wgpu::util::DeviceExt;
 use winit::{event::WindowEvent, window::Window};
 
-use crate::{camera::GpuCamera, gpu_buffer::{StorageBuffer, UniformBuffer}, vertex::Vertex};
+use crate::{camera::{Camera, GpuCamera}, gpu_buffer::{StorageBuffer, UniformBuffer}, vertex::Vertex};
 
 
 pub struct RenderContext<'a> {
@@ -19,9 +19,12 @@ pub struct RenderContext<'a> {
     image_bind_group: wgpu::BindGroup,
     camera_buffer: UniformBuffer,
     scene_bind_group: wgpu::BindGroup,
+    scene: Scene,
 }
 
+#[derive(Clone)]
 pub struct Scene {
+    pub camera: Camera,
     pub spheres: Vec<Sphere>,
 }
 
@@ -133,6 +136,7 @@ impl<'a> RenderContext<'a> {
 
         let camera_buffer = {
             let camera = GpuCamera::new(
+                &scene.camera,
                 (
                     size.width, 
                     size.height
@@ -288,7 +292,8 @@ impl<'a> RenderContext<'a> {
             vertex_buffer,
             image_bind_group,
             camera_buffer,
-            scene_bind_group
+            scene_bind_group,
+            scene: scene.clone(),
         }
     }
 
@@ -347,8 +352,9 @@ impl<'a> RenderContext<'a> {
 
             {
                 let camera = GpuCamera::new(
+                    &self.scene.camera,
                     (
-                        self.size.width, 
+                        self.size.width,
                         self.size.height
                     )
                 );

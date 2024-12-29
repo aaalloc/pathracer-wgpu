@@ -66,6 +66,13 @@ pub fn init(width: u32, height: u32) -> (winit::window::Window, winit::event_loo
 pub async fn run() {    
     let (window, event_loop) = init(900, 450);
     let scenes = Scene {
+        camera: camera::Camera {
+            eye_pos: glm::vec3(0.0, 0.0, 1.0),
+            eye_dir: glm::vec3(0.0, 0.0, -1.0),
+            up: glm::vec3(0.0, 1.0, 0.0),
+            aperture: 0.1,
+            focus_distance: 1.0,
+        },
         spheres: vec![
             Sphere::new(
                 glm::vec3(0.0, -100.5, -1.0),
