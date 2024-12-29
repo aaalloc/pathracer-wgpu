@@ -91,7 +91,8 @@ fn hit_sphere(
     ray_min: f32,
     ray_max: f32,
     hit: ptr<function, HitRecord>,
-) -> bool {
+) -> bool 
+{
     let sphere = spheres[sphere_index];
 
     let oc = ray.origin - sphere.center.xyz;
@@ -126,13 +127,16 @@ fn hit_sphere(
     return true;
 }
 
-fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool{
+fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool
+{
     var closest_so_far = MAX_T;
     var hit_anything = false;
     var tmp_rec = HitRecord();
 
-    for (var i = 0u; i < arrayLength(&spheres); i = i + 1u) {
-        if hit_sphere(i, ray, MIN_T, MAX_T, &tmp_rec) {
+    for (var i = 0u; i < arrayLength(&spheres); i += 1u) 
+    {
+        if hit_sphere(i, ray, MIN_T, MAX_T, &tmp_rec) 
+        {
             hit_anything = true;
             closest_so_far = tmp_rec.t;
             *intersection = tmp_rec;
@@ -142,9 +146,11 @@ fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool{
     return hit_anything;
 }
 
-fn sample_pixel(rngState: ptr<function, u32>, x: f32, y: f32) -> vec3<f32> {
+fn sample_pixel(rngState: ptr<function, u32>, x: f32, y: f32) -> vec3<f32>
+{
     var color = vec3<f32>(0.0);
-    for (var i = 0u; i < SAMPLES_PER_PIXEL; i = i + 1u) {
+    for (var i = 0u; i < SAMPLES_PER_PIXEL; i += 1u) 
+    {
         let ray = get_ray(rngState, x, y);
         color += ray_color(ray, rngState);
     }
@@ -164,12 +170,14 @@ fn get_ray(rngState: ptr<function, u32>, x: f32, y: f32) -> Ray {
 
 
 const MAX_DEPTH = 10u;
-fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
+fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32>
+{
     var ray = first_ray;
     var color = vec3<f32>(0.0);
     var intersection = HitRecord();
 
-    for (var i = 0u; i < MAX_DEPTH; i = i + 1u) {
+    for (var i = 0u; i < MAX_DEPTH; i = i + 1u)
+    {
         if check_intersection(ray, &intersection)
         {
             // color += 0.5 * (intersection.normal + vec3<f32>(1.0));
@@ -190,7 +198,8 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
 }
 
 
-fn jenkinsHash(input: u32) -> u32 {
+fn jenkinsHash(input: u32) -> u32
+{
     var x = input;
     x += x << 10u;
     x ^= x >> 6u;
@@ -200,14 +209,16 @@ fn jenkinsHash(input: u32) -> u32 {
     return x;
 }
 
-fn initRng(pixel: vec2<u32>, resolution: vec2<u32>, frame: u32) -> u32 {
+fn initRng(pixel: vec2<u32>, resolution: vec2<u32>, frame: u32) -> u32
+{
     // Adapted from https://github.com/boksajak/referencePT
     let seed = dot(pixel, vec2<u32>(1u, resolution.x)) ^ jenkinsHash(frame);
     return jenkinsHash(seed);
 }
 
 
-fn random_on_hemisphere(rngState: ptr<function, u32>, normal: vec3<f32>) -> vec3<f32> {
+fn random_on_hemisphere(rngState: ptr<function, u32>, normal: vec3<f32>) -> vec3<f32>
+{
     let on_unit_sphere = random_in_unit_sphere(rngState);
     if dot(on_unit_sphere, normal) > 0.0 {
         return on_unit_sphere;
@@ -217,7 +228,8 @@ fn random_on_hemisphere(rngState: ptr<function, u32>, normal: vec3<f32>) -> vec3
 }
 
 
-fn random_in_unit_sphere(state: ptr<function, u32>) -> vec3<f32> {
+fn random_in_unit_sphere(state: ptr<function, u32>) -> vec3<f32>
+{
     // Generate three random numbers x,y,z using Gaussian distribution
     var x = rngNextFloatGaussian(state);
     var y = rngNextFloatGaussian(state);
@@ -235,7 +247,8 @@ fn random_in_unit_sphere(state: ptr<function, u32>) -> vec3<f32> {
     return vec3(x, y, z);
 }
 
-fn rngNextInt(state: ptr<function, u32>) -> u32 {
+fn rngNextInt(state: ptr<function, u32>) -> u32
+{
     // PCG random number generator
     // Based on https://www.shadertoy.com/view/XlGcRh
     let newState = *state * 747796405u + 2891336453u;
@@ -244,13 +257,15 @@ fn rngNextInt(state: ptr<function, u32>) -> u32 {
     return (word >> 22u) ^ word;
 }
 
-fn rngNextFloatGaussian(state: ptr<function, u32>) -> f32 {
+fn rngNextFloatGaussian(state: ptr<function, u32>) -> f32
+{
     let x1 = rngNextFloat(state);
     let x2 = rngNextFloat(state);
     return sqrt(-2.0 * log(x1)) * cos(2.0 * PI * x2);
 }
 
-fn rngNextFloat(state: ptr<function, u32>) -> f32 {
+fn rngNextFloat(state: ptr<function, u32>) -> f32
+{
     let x = rngNextInt(state);
     return f32(*state) / f32(0xffffffffu);
 }
