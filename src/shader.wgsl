@@ -11,7 +11,9 @@ struct VertexOutput {
 
 const MIN_T = 0.001f;
 const MAX_T = 1000f;
-
+const WIDTH = 900u;
+const HEIGHT = 450u;
+const SAMPLES_PER_PIXEL = 100u;
 
 @group(0) @binding(0) var<uniform> camera: Camera;
 
@@ -36,8 +38,18 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let origin = camera.eye;
     let direction = camera.lowerLeftCorner + u * camera.horizontal + v * camera.vertical - origin;
 
-    let ray = Ray(origin, direction);
-    return vec4<f32>(ray_color(ray), 1.0);
+    let x = u32(u * f32(WIDTH));
+    let y = u32(v * f32(HEIGHT));
+
+    var rngState: u32 = initRng(
+        vec2<u32>(u32(x), u32(y)), 
+        vec2<u32>(WIDTH, HEIGHT), 
+        0u
+    );
+    let color = sample_pixel(&rngState, f32(x), f32(y));
+    
+    return vec4<f32>(color, 1.0);
+
     // var noiseState: u32 = initRng(vec2<u32>(u32(u), u32(v)), vec2<u32>(512u, 512u), 0u);
     // return vec4<f32>(rngNextFloat(&noiseState), rngNextFloat(&noiseState), rngNextFloat(&noiseState), 1.0);
 }
@@ -124,6 +136,17 @@ fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool{
     }
 
     return hit_anything;
+}
+
+fn sample_pixel(rngState: ptr<function, u32>, x: f32, y: f32) -> vec3<f32> {
+    var color = vec3<f32>(0.0);
+    for (var i = 0u; i < SAMPLES_PER_PIXEL; i = i + 1u) {
+        let s = f32(x + rngNextFloat(rngState)) / f32(WIDTH);
+        let t = f32(y + rngNextFloat(rngState)) / f32(HEIGHT);
+        let ray = Ray(camera.eye, normalize(camera.lowerLeftCorner + s * camera.horizontal + t * camera.vertical - camera.eye));
+        color += ray_color(ray);
+    }
+    return color / f32(SAMPLES_PER_PIXEL);
 }
 
 fn ray_color(ray: Ray) -> vec3<f32> {
