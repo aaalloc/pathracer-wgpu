@@ -236,7 +236,7 @@ fn random_in_unit_sphere(state: ptr<function, u32>) -> vec3<f32>
     var z = rngNextFloatGaussian(state);
 
     // Multiply each number by 1/sqrt(x²+y²+z²) (a.k.a. Normalise) .
-    // You should handle what happens if x=y=z=0.
+    // case x=y=z=0 ?
 
     let length = sqrt(x * x + y * y + z * z);
 
