@@ -9,7 +9,7 @@ struct VertexOutput {
 };
 
 const PI = 3.1415927f;
-const MIN_T = 0.001f;
+const MIN_T = 0.01f;
 const MAX_T = 1000f;
 
 const WIDTH = 900u;
@@ -46,9 +46,10 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         0u
     );
     let color = sample_pixel(&rngState, f32(x), f32(y));
-    
+    let invNumSamples = 1.0 / f32(SAMPLES_PER_PIXEL);
+
     return vec4<f32>(
-        color,
+        color * invNumSamples,
         1.0
     );
 
@@ -115,16 +116,21 @@ fn hit_sphere(
         }
     }
 
-    let t = root;
+
+    *hit = sphereIntersection(ray, sphere, root);
+    return true;
+}
+
+fn sphereIntersection(ray: Ray, sphere: Sphere, t: f32) -> HitRecord {
     let p = ray.origin + t * ray.direction;
     var normal = (p - sphere.center.xyz) / sphere.radius;
     let front_face = dot(ray.direction, normal) < 0.0;
     if !front_face {
         normal = -normal;
     }
-    *hit = HitRecord(p, normal, t, front_face);
-    return true;
+    return HitRecord(p, normal, t, front_face);
 }
+
 
 fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool {
     var closest_so_far = MAX_T;
@@ -151,7 +157,7 @@ fn sample_pixel(rngState: ptr<function, u32>, x: f32, y: f32) -> vec3<f32> {
         let ray = get_ray(rngState, x, y);
         color += ray_color(ray, rngState);
     }
-    return color / f32(SAMPLES_PER_PIXEL);
+    return color;
 }
 
 fn get_ray(rngState: ptr<function, u32>, x: f32, y: f32) -> Ray {
@@ -176,17 +182,18 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
     {
         if check_intersection(ray, &intersection)
         {
-            // color += 0.5 * (intersection.normal + vec3<f32>(1.0));
-            // let unit_direction = normalize(ray.direction);
-            let direction = random_on_hemisphere(rngState, intersection.normal);
-            color += direction;
+            // color = 0.5 * (intersection.normal + vec3<f32>(1.0));
+            // let direction = random_on_hemisphere(rngState, intersection.normal);
+            let direction = intersection.normal + random_in_unit_sphere(rngState);
+            color = 0.5 * direction;
             ray = Ray(intersection.p, direction);
         } 
         else 
         {
-            let a = 0.5 * (ray.direction.y + 1.0);
-            var sky = (1.0 - a) * vec3<f32>(1.0, 1.0, 1.0) + a * vec3<f32>(0.1, 0.7, 1.0);
-            color += sky;
+            let direction = normalize(ray.direction);
+            let a = 0.5 * (direction.y + 1.0);
+            var sky = (1.0 - a) * vec3<f32>(1.0, 1.0, 1.0) + a * vec3<f32>(0.1, 0.6, 0.9);
+            color = sky;
             break;
         }
     }
@@ -231,12 +238,7 @@ fn random_in_unit_sphere(state: ptr<function, u32>) -> vec3<f32> {
     // case x=y=z=0 ?
 
     let length = sqrt(x * x + y * y + z * z);
-
-    x = x / length;
-    y = y / length;
-    z = z / length;
-
-    return vec3(x, y, z);
+    return vec3(x, y, z) / length;
 }
 
 fn rngNextInt(state: ptr<function, u32>) -> u32 {
