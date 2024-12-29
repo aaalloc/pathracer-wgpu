@@ -15,7 +15,7 @@ const MAX_T = 1000f;
 const WIDTH = 900u;
 const HEIGHT = 450u;
 const SAMPLES_PER_PIXEL = 100u;
-const MAX_DEPTH = 3u;
+
 
 @group(0) @binding(0) var<uniform> camera: Camera;
 
@@ -47,10 +47,13 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     );
     let color = sample_pixel(&rngState, f32(x), f32(y));
     
-    return vec4<f32>(color, 1.0);
+    return vec4<f32>(
+        color,
+        1.0
+    );
 
     // var noiseState: u32 = initRng(vec2<u32>(u32(u), u32(v)), vec2<u32>(512u, 512u), 0u);
-    // return vec4<f32>(rngNextFloat(&noiseState), rngNextFloat(&noiseState), rngNextFloat(&noiseState), 1.0);
+    // return vec4<f32>(rngNextFloat(&rngState), rngNextFloat(&rngState), rngNextFloat(&rngState), 1.0);
 }
 
 struct Camera {
@@ -93,18 +96,20 @@ fn hit_sphere(
 
     let oc = ray.origin - sphere.center.xyz;
     let a = dot(ray.direction, ray.direction);
-    let b = 2.0 * dot(oc, ray.direction);
+    let b = dot(ray.direction, oc);
     let c = dot(oc, oc) - sphere.radius * sphere.radius;
-    let discriminant = b * b - 4.0 * a * c;
+    let discriminant = b * b - a * c;
     
     if discriminant < 0.0 {
         return false;
     }
 
     let sqrtd = sqrt(discriminant);
-    var root = (-b - sqrtd) / (2.0 * a);
-    if root < ray_min || root > ray_max {
-        root = (-b + sqrtd) / (2.0 * a);
+
+    var root = (-b - sqrtd) / a;
+    if root < ray_min || root > ray_max 
+    {
+        root = (-b + sqrtd) / a;
         if root < ray_min || root > ray_max {
             return false;
         }
@@ -124,13 +129,13 @@ fn hit_sphere(
 fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool{
     var closest_so_far = MAX_T;
     var hit_anything = false;
+    var tmp_rec = HitRecord();
 
     for (var i = 0u; i < arrayLength(&spheres); i = i + 1u) {
-        var t = HitRecord();
-        if hit_sphere(i, ray, MIN_T, MAX_T, &t) {
+        if hit_sphere(i, ray, MIN_T, MAX_T, &tmp_rec) {
             hit_anything = true;
-            closest_so_far = t.t;
-            *intersection = t;
+            closest_so_far = tmp_rec.t;
+            *intersection = tmp_rec;
         }
     }
 
@@ -158,32 +163,28 @@ fn get_ray(rngState: ptr<function, u32>, x: f32, y: f32) -> Ray {
 
 
 
-fn random_on_hemisphere(rngState: ptr<function, u32>, normal: vec3<f32>) -> vec3<f32> {
-    let on_unit_sphere = random_in_unit_sphere(rngState);
-    if dot(on_unit_sphere, normal) > 0.0 {
-        return on_unit_sphere;
-    } else {
-        return -on_unit_sphere;
-    }
-}
-
+const MAX_DEPTH = 10u;
 fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
     var ray = first_ray;
     var color = vec3<f32>(0.0);
+    var intersection = HitRecord();
 
     for (var i = 0u; i < MAX_DEPTH; i = i + 1u) {
-        var intersection = HitRecord();
-        if check_intersection(ray, &intersection) {
-            // color += 0.5 * (intersection.normal + vec3<f32>(1.0, 1.0, 1.0));
+        if check_intersection(ray, &intersection)
+        {
+            // color += 0.5 * (intersection.normal + vec3<f32>(1.0));
+            // let unit_direction = normalize(ray.direction);
             let direction = random_on_hemisphere(rngState, intersection.normal);
             color += direction;
             ray = Ray(intersection.p, direction);
-            continue; 
+        } 
+        else 
+        {
+            let a = 0.5 * (ray.direction.y + 1.0);
+            var sky = (1.0 - a) * vec3<f32>(1.0, 1.0, 1.0) + a * vec3<f32>(0.1, 0.7, 1.0);
+            color += sky;
+            break;
         }
-        let a = 0.5 * (ray.direction.y + 1.0);
-        var sky = (1.0 - a) * vec3<f32>(1.0, 1.0, 1.0) + a * vec3<f32>(0.2, 0.7, 1.0);
-        color += sky;
-        break;
     }
     return color;
 }
@@ -206,26 +207,30 @@ fn initRng(pixel: vec2<u32>, resolution: vec2<u32>, frame: u32) -> u32 {
 }
 
 
-fn random_in_unit_disk(state: ptr<function, u32>) -> vec3<f32> {
-    let r = sqrt(rngNextFloat(state));
-    let theta = 2.0 * PI * rngNextFloat(state);
-
-    let x = r * cos(theta);
-    let y = r * sin(theta);
-
-    return vec3<f32>(x, y, 0.0);
+fn random_on_hemisphere(rngState: ptr<function, u32>, normal: vec3<f32>) -> vec3<f32> {
+    let on_unit_sphere = random_in_unit_sphere(rngState);
+    if dot(on_unit_sphere, normal) > 0.0 {
+        return on_unit_sphere;
+    } else {
+        return -on_unit_sphere;
+    }
 }
 
 
 fn random_in_unit_sphere(state: ptr<function, u32>) -> vec3<f32> {
-    let r = pow(rngNextFloat(state), 0.33333f);
-    let cosTheta = 1f - 2f * rngNextFloat(state);
-    let sinTheta = sqrt(1f - cosTheta * cosTheta);
-    let phi = 2f * PI * rngNextFloat(state);
+    // Generate three random numbers x,y,z using Gaussian distribution
+    var x = rngNextFloatGaussian(state);
+    var y = rngNextFloatGaussian(state);
+    var z = rngNextFloatGaussian(state);
 
-    let x = r * sinTheta * cos(phi);
-    let y = r * sinTheta * sin(phi);
-    let z = cosTheta;
+    // Multiply each number by 1/sqrt(x²+y²+z²) (a.k.a. Normalise) .
+    // You should handle what happens if x=y=z=0.
+
+    let length = sqrt(x * x + y * y + z * z);
+
+    x = x / length;
+    y = y / length;
+    z = z / length;
 
     return vec3(x, y, z);
 }
@@ -237,6 +242,12 @@ fn rngNextInt(state: ptr<function, u32>) -> u32 {
     *state = newState;
     let word = ((newState >> ((newState >> 28u) + 4u)) ^ newState) * 277803737u;
     return (word >> 22u) ^ word;
+}
+
+fn rngNextFloatGaussian(state: ptr<function, u32>) -> f32 {
+    let x1 = rngNextFloat(state);
+    let x2 = rngNextFloat(state);
+    return sqrt(-2.0 * log(x1)) * cos(2.0 * PI * x2);
 }
 
 fn rngNextFloat(state: ptr<function, u32>) -> f32 {
