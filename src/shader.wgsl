@@ -9,7 +9,7 @@ struct VertexOutput {
 };
 
 const PI = 3.1415927f;
-const MIN_T = 0.01f;
+const MIN_T = 0.001f;
 const MAX_T = 1000f;
 
 const WIDTH = 900u;
@@ -172,7 +172,7 @@ fn get_ray(rngState: ptr<function, u32>, x: f32, y: f32) -> Ray {
 
 
 
-const MAX_DEPTH = 100u;
+const MAX_DEPTH = 10u;
 fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
     var ray = first_ray;
     var color = vec3<f32>(1.0);
