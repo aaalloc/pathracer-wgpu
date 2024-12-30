@@ -25,7 +25,6 @@ const SAMPLES_PER_PIXEL = 100u;
 fn vs_main(
     model: VertexInput,
 ) -> VertexOutput {
-    // 1.0 to 0.0 to put in 2D space
     return VertexOutput(
         vec4<f32>(model.position, 0.0, 1.0),
         model.tex_coords,
@@ -82,7 +81,6 @@ struct HitRecord {
     p: vec3<f32>,
     normal: vec3<f32>,
     t: f32,
-    front_face: bool,
 };
 
 
@@ -124,11 +122,7 @@ fn hit_sphere(
 fn sphereIntersection(ray: Ray, sphere: Sphere, t: f32) -> HitRecord {
     let p = ray.origin + t * ray.direction;
     var normal = (p - sphere.center.xyz) / sphere.radius;
-    let front_face = dot(ray.direction, normal) < 0.0;
-    if !front_face {
-        normal = -normal;
-    }
-    return HitRecord(p, normal, t, front_face);
+    return HitRecord(p, normal, t);
 }
 
 
@@ -151,7 +145,7 @@ fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool 
 }
 
 fn sample_pixel(rngState: ptr<function, u32>, x: f32, y: f32) -> vec3<f32> {
-    var color = vec3<f32>(0.0);
+    var color = vec3(0.0);
     for (var i = 0u; i < SAMPLES_PER_PIXEL; i += 1u) 
     {
         let ray = get_ray(rngState, x, y);
@@ -175,7 +169,7 @@ fn get_ray(rngState: ptr<function, u32>, x: f32, y: f32) -> Ray {
 const MAX_DEPTH = 10u;
 fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
     var ray = first_ray;
-    var color = vec3<f32>(1.0);
+    var color = vec3(1.0);
     var intersection = HitRecord();
 
     for (var i = 0u; i < MAX_DEPTH; i += 1u)
