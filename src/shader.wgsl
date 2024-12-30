@@ -14,7 +14,7 @@ const MAX_T = 1000f;
 
 const WIDTH = 900u;
 const HEIGHT = 450u;
-const SAMPLES_PER_PIXEL = 100u;
+const SAMPLES_PER_PIXEL = 10u;
 
 
 @group(0) @binding(0) var<uniform> camera: Camera;
@@ -77,10 +77,26 @@ struct Sphere {
     material_index: u32,
 };
 
+const MAT_LAMBERTIAN = 0u;
+const MAT_METAL = 1u;
+
+struct Material {
+    albedo: vec3<f32>,
+    fuzz: f32,
+    t: u32,
+};
+
+const test_materials: array<Material, 3> = array<Material, 3>(
+    Material(vec3<f32>(0.8, 0.8, 0.0), 0.0, MAT_LAMBERTIAN),
+    Material(vec3<f32>(0.1, 0.2, 0.5), 0.0, MAT_LAMBERTIAN),
+    Material(vec3<f32>(0.8, 0.8, 0.8), 0.0, MAT_METAL),
+);
+
 struct HitRecord {
     p: vec3<f32>,
     normal: vec3<f32>,
     t: f32,
+    material_index: u32,
 };
 
 
@@ -115,14 +131,14 @@ fn hit_sphere(
     }
 
 
-    *hit = sphereIntersection(ray, sphere, root);
+    *hit = sphereIntersection(ray, sphere, root, sphere_index);
     return true;
 }
 
-fn sphereIntersection(ray: Ray, sphere: Sphere, t: f32) -> HitRecord {
+fn sphereIntersection(ray: Ray, sphere: Sphere, t: f32, material_index: u32) -> HitRecord {
     let p = ray.origin + t * ray.direction;
     var normal = (p - sphere.center.xyz) / sphere.radius;
-    return HitRecord(p, normal, t);
+    return HitRecord(p, normal, t, material_index);
 }
 
 
@@ -169,29 +185,65 @@ fn get_ray(rngState: ptr<function, u32>, x: f32, y: f32) -> Ray {
 const MAX_DEPTH = 10u;
 fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
     var ray = first_ray;
-    var color = vec3(1.0);
+    var color = vec3(0.0);
+    var throughput = vec3(1.0);
     var intersection = HitRecord();
 
     for (var i = 0u; i < MAX_DEPTH; i += 1u)
     {
         if check_intersection(ray, &intersection)
         {
-            let direction = intersection.normal + random_in_unit_sphere(rngState);
-            color *= 0.5;
-            ray = Ray(intersection.p, direction);
+            let material = test_materials[intersection.material_index];
+            let scattered = scatter(ray, intersection, material, rngState);
+            throughput *= material.albedo;
+            ray = scattered;
         } 
         else 
         {
             let direction = normalize(ray.direction);
             let a = 0.5 * (direction.y + 1.0);
-            var sky = (1.0 - a) * vec3<f32>(1.0, 1.0, 1.0) + a * vec3<f32>(0.1, 0.6, 0.9);
-            color *= sky;
-            break;
+            var sky = (1.0 - a) * vec3<f32>(1.0, 1.0, 1.0) + a * vec3<f32>(0.5, 0.7, 1);
+            color = sky;
+            // break;
         }
     }
-    return color;
+    return throughput * color;
 }
 
+fn scatter(ray: Ray, hit: HitRecord, material: Material, rngState: ptr<function, u32>) -> Ray {
+    switch (material.t) 
+    {
+        case MAT_LAMBERTIAN: 
+        {
+            let t = hit.p + hit.normal + random_on_hemisphere(rngState, hit.normal);
+            
+            if vec3_near_zero(t - hit.p) {
+                return Ray(hit.p, hit.normal);
+            }
+
+            return Ray(hit.p, t - hit.p);
+        }
+        case MAT_METAL: 
+        {
+            let reflected = reflect(normalize(ray.direction), hit.normal);
+            let fuzz = material.fuzz;
+            let direction = reflected + fuzz * random_in_unit_sphere(rngState);
+            return Ray(hit.p, direction);
+        }
+        default: {
+            return Ray(vec3(0.0), vec3(0.0));
+        }
+    }
+}
+
+fn vec3_near_zero(v: vec3<f32>) -> bool {
+    let s = 1e-8;
+    return (abs(v.x) < s) && (abs(v.y) < s) && (abs(v.z) < s);
+}
+
+fn reflect(v: vec3<f32>, n: vec3<f32>) -> vec3<f32> {
+    return v - 2.0 * dot(v, n) * n;
+}
 
 fn jenkinsHash(input: u32) -> u32 {
     var x = input;
