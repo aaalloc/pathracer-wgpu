@@ -4,7 +4,7 @@ pub struct Camera {
     pub eye_dir: glm::Vec3,
     pub up: glm::Vec3,
     /// Angle must be between 0..=90 degrees.
-    // pub vfov: Angle,
+    pub vfov: f32,
     /// Aperture must be between 0..=1.
     pub aperture: f32,
     /// Focus distance must be a positive number.
@@ -32,7 +32,7 @@ impl GpuCamera {
     pub fn new(camera: &Camera, viewport_size: (u32, u32)) -> Self {
         let lens_radius = 0.5_f32 * camera.aperture;
         let aspect = viewport_size.0 as f32 / viewport_size.1 as f32;
-        let theta = 45_f32.to_radians();
+        let theta = camera.vfov.to_radians();
         let half_height = camera.focus_distance * (0.5_f32 * theta).tan();
         let half_width = aspect * half_height;
 

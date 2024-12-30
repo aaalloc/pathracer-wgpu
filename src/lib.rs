@@ -70,6 +70,7 @@ pub async fn run() {
             eye_pos: glm::vec3(0.0, 0.0, 1.0),
             eye_dir: glm::vec3(0.0, 0.0, -1.0),
             up: glm::vec3(0.0, 1.0, 0.0),
+            vfov: 45.0,
             aperture: 0.1,
             focus_distance: 1.0,
         },
