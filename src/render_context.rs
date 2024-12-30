@@ -1,7 +1,7 @@
 use wgpu::util::DeviceExt;
 use winit::{event::WindowEvent, window::Window};
 
-use crate::{camera::{Camera, GpuCamera}, gpu_buffer::{StorageBuffer, UniformBuffer}, vertex::Vertex};
+use crate::{gpu_buffer::{StorageBuffer, UniformBuffer}, scene::{GpuCamera, GpuMaterial, Scene}, vertex::Vertex};
 
 
 pub struct RenderContext<'a> {
@@ -20,139 +20,6 @@ pub struct RenderContext<'a> {
     camera_buffer: UniformBuffer,
     scene_bind_group: wgpu::BindGroup,
     scene: Scene,
-}
-
-#[derive(Clone)]
-pub struct Scene {
-    pub camera: Camera,
-    pub materials: Vec<Material>,
-    pub spheres: Vec<Sphere>,
-}
-
-impl Scene {
-    pub fn new(camera: Camera, spheres: Vec<(Sphere, Material)>,) -> Self {
-        let mut materials = Vec::new();
-        let mut s = Vec::new();
-
-        for (sphere, material) in spheres {
-            materials.push(material);
-            s.push(Sphere {
-                material_idx: materials.len() as u32 - 1,
-                ..sphere
-            });
-        }
-
-        Self {
-            camera,
-            materials,
-            spheres: s,
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct Texture {
-    dimensions: (u32, u32),
-    data: Vec<[f32; 3]>,
-}
-
-#[repr(C)]
-#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct TextureDescriptor {
-    width: u32,
-    height: u32,
-    offset: u32,
-}
-
-
-impl Texture {
-    pub fn new_from_color(color: glm::Vec3) -> Self {
-        Self {
-            dimensions: (1, 1),
-            data: vec![[color.x, color.y, color.z]],
-        }
-    }
-
-    pub fn as_slice(&self) -> &[[f32; 3]] {
-        &self.data
-    }
-
-    pub fn dimensions(&self) -> (u32, u32) {
-        self.dimensions
-    }
-}
-
-#[derive(Clone)]
-pub enum Material {
-    Lambertian {
-        albedo: Texture,
-    },
-    Metal {
-        albedo: Texture,
-        fuzz: f32,
-    },
-}
-
-#[repr(C)]
-#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct GpuMaterial {
-    id: u32,
-    descriptor: TextureDescriptor,
-    x: f32,
-}
-impl GpuMaterial {
-    fn append_to_global_texture_data(
-        texture: &Texture,
-        global_texture_data: &mut Vec<[f32; 3]>,
-    ) -> TextureDescriptor {
-        let dimensions = texture.dimensions();
-        let offset = global_texture_data.len() as u32;
-        global_texture_data.extend_from_slice(texture.as_slice());
-        TextureDescriptor {
-            width: dimensions.0,
-            height: dimensions.1,
-            offset,
-        }
-    }
-
-    pub fn new(material: &Material,global_texture_data: &mut Vec<[f32; 3]>) -> Self {
-        match material {
-            Material::Lambertian { albedo } => {
-                Self {
-                    id: 0,
-                    descriptor: Self::append_to_global_texture_data(albedo, global_texture_data),
-                    x: 0.0,
-                }
-            }
-            Material::Metal { albedo, fuzz } => {
-                Self {
-                    id: 1,
-                    descriptor: Self::append_to_global_texture_data(albedo, global_texture_data),
-                    x: *fuzz,
-                }
-            }
-        }
-    }
-}
-
-#[repr(C)]
-#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct Sphere {
-    center: glm::Vec4,  // 0 byte offset
-    radius: f32,        // 16 byte offset
-    material_idx: u32,  // 20 byte offset
-    _padding: [u32; 2], // 24 byte offset, 8 bytes size
-}
-
-impl Sphere {
-    pub fn new(center: glm::Vec3, radius: f32) -> Self {
-        Self {
-            center: glm::vec3_to_vec4(&center),
-            radius,
-            material_idx: 0,
-            _padding: [0; 2],
-        }
-    }
 }
 
 // const RGB_TRIANGLE: &[Vertex] = &[

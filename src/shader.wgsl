@@ -201,6 +201,7 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
         {
             let material = materials[intersection.material_index];
             let scattered = scatter(ray, intersection, material, rngState);
+            // why 0.5 0.5?
             throughput *= texture_look_up(material.desc, 0.5, 0.5);
             ray = scattered;
         } 

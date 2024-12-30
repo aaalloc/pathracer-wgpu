@@ -1,3 +1,4 @@
+use scene::{Camera, Material, Scene, Sphere, Texture};
 #[cfg(target_arch="wasm32")]
 use wasm_bindgen::prelude::*;
 
@@ -8,12 +9,12 @@ use winit::{
 };
 
 mod render_context;
-use render_context::{Material, RenderContext, Scene, Sphere, Texture};
+use render_context::RenderContext;
 
 mod vertex;
 mod gpu_buffer;
 
-mod camera;
+mod scene;
 extern crate nalgebra_glm as glm;
 
 
@@ -66,7 +67,7 @@ pub fn init(width: u32, height: u32) -> (winit::window::Window, winit::event_loo
 pub async fn run() {    
     let (window, event_loop) = init(900, 450);
     let scenes = Scene::new(
-        camera::Camera {
+        Camera {
             eye_pos: glm::vec3(0.0, 0.0, 1.0),
             eye_dir: glm::vec3(0.0, 0.0, -1.0),
             up: glm::vec3(0.0, 1.0, 0.0),
