@@ -8,7 +8,11 @@ struct VertexOutput {
     @location(0) tex_coords: vec2<f32>,
 };
 
+const EPSILON = 0.0001f;
 const PI = 3.1415927f;
+const FRAC_1_PI = 0.31830987f;
+const FRAC_PI_2 = 1.5707964f;
+
 const MIN_T = 0.001f;
 const MAX_T = 1000f;
 
@@ -20,6 +24,8 @@ const SAMPLES_PER_PIXEL = 10u;
 @group(0) @binding(0) var<uniform> camera: Camera;
 
 @group(1) @binding(0) var<storage, read> spheres: array<Sphere>;
+@group(1) @binding(1) var<storage, read> materials: array<Material>;
+@group(1) @binding(2) var<storage, read> textures: array<array<f32, 3>>;
 
 @vertex
 fn vs_main(
@@ -81,16 +87,16 @@ const MAT_LAMBERTIAN = 0u;
 const MAT_METAL = 1u;
 
 struct Material {
-    albedo: vec3<f32>,
+    id: u32,
+    desc: TextureDescriptor,
     fuzz: f32,
-    t: u32,
 };
 
-const test_materials: array<Material, 3> = array<Material, 3>(
-    Material(vec3<f32>(0.8, 0.8, 0.0), 0.0, MAT_LAMBERTIAN),
-    Material(vec3<f32>(0.1, 0.2, 0.5), 0.0, MAT_LAMBERTIAN),
-    Material(vec3<f32>(0.8, 0.8, 0.8), 0.0, MAT_METAL),
-);
+struct TextureDescriptor {
+    width: u32,
+    height: u32,
+    offset: u32,
+}
 
 struct HitRecord {
     p: vec3<f32>,
@@ -193,9 +199,9 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
     {
         if check_intersection(ray, &intersection)
         {
-            let material = test_materials[intersection.material_index];
+            let material = materials[intersection.material_index];
             let scattered = scatter(ray, intersection, material, rngState);
-            throughput *= material.albedo;
+            throughput *= texture_look_up(material.desc, 0.5, 0.5);
             ray = scattered;
         } 
         else 
@@ -210,8 +216,10 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
     return throughput * color;
 }
 
+
+
 fn scatter(ray: Ray, hit: HitRecord, material: Material, rngState: ptr<function, u32>) -> Ray {
-    switch (material.t) 
+    switch (material.id) 
     {
         case MAT_LAMBERTIAN: 
         {
@@ -303,4 +311,16 @@ fn rngNextFloatGaussian(state: ptr<function, u32>) -> f32 {
 fn rngNextFloat(state: ptr<function, u32>) -> f32 {
     let x = rngNextInt(state);
     return f32(*state) / f32(0xffffffffu);
+}
+
+fn texture_look_up(desc: TextureDescriptor, x: f32, y: f32) -> vec3<f32> {
+    var u = clamp(x, 0f, 1f);
+    var v = 1f - clamp(y, 0f, 1f);
+
+    let j = u32(u * f32(desc.width));
+    let i = u32(v * f32(desc.height));
+    let idx = i * desc.width + j;
+
+    let elem = textures[desc.offset + idx];
+    return vec3(elem[0u], elem[1u], elem[2u]);
 }

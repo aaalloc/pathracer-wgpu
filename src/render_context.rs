@@ -25,7 +25,114 @@ pub struct RenderContext<'a> {
 #[derive(Clone)]
 pub struct Scene {
     pub camera: Camera,
+    pub materials: Vec<Material>,
     pub spheres: Vec<Sphere>,
+}
+
+impl Scene {
+    pub fn new(camera: Camera, spheres: Vec<(Sphere, Material)>,) -> Self {
+        let mut materials = Vec::new();
+        let mut s = Vec::new();
+
+        for (sphere, material) in spheres {
+            materials.push(material);
+            s.push(Sphere {
+                material_idx: materials.len() as u32 - 1,
+                ..sphere
+            });
+        }
+
+        Self {
+            camera,
+            materials,
+            spheres: s,
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct Texture {
+    dimensions: (u32, u32),
+    data: Vec<[f32; 3]>,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct TextureDescriptor {
+    width: u32,
+    height: u32,
+    offset: u32,
+}
+
+
+impl Texture {
+    pub fn new_from_color(color: glm::Vec3) -> Self {
+        Self {
+            dimensions: (1, 1),
+            data: vec![[color.x, color.y, color.z]],
+        }
+    }
+
+    pub fn as_slice(&self) -> &[[f32; 3]] {
+        &self.data
+    }
+
+    pub fn dimensions(&self) -> (u32, u32) {
+        self.dimensions
+    }
+}
+
+#[derive(Clone)]
+pub enum Material {
+    Lambertian {
+        albedo: Texture,
+    },
+    Metal {
+        albedo: Texture,
+        fuzz: f32,
+    },
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct GpuMaterial {
+    id: u32,
+    descriptor: TextureDescriptor,
+    x: f32,
+}
+impl GpuMaterial {
+    fn append_to_global_texture_data(
+        texture: &Texture,
+        global_texture_data: &mut Vec<[f32; 3]>,
+    ) -> TextureDescriptor {
+        let dimensions = texture.dimensions();
+        let offset = global_texture_data.len() as u32;
+        global_texture_data.extend_from_slice(texture.as_slice());
+        TextureDescriptor {
+            width: dimensions.0,
+            height: dimensions.1,
+            offset,
+        }
+    }
+
+    pub fn new(material: &Material,global_texture_data: &mut Vec<[f32; 3]>) -> Self {
+        match material {
+            Material::Lambertian { albedo } => {
+                Self {
+                    id: 0,
+                    descriptor: Self::append_to_global_texture_data(albedo, global_texture_data),
+                    x: 0.0,
+                }
+            }
+            Material::Metal { albedo, fuzz } => {
+                Self {
+                    id: 1,
+                    descriptor: Self::append_to_global_texture_data(albedo, global_texture_data),
+                    x: *fuzz,
+                }
+            }
+        }
+    }
 }
 
 #[repr(C)]
@@ -159,10 +266,32 @@ impl<'a> RenderContext<'a> {
                 Some("scene buffer"),
             );
             
+            let mut global_texture_data = Vec::new();
+            let mut material_data: Vec<GpuMaterial> = Vec::with_capacity(scene.materials.len());
+            for material in scene.materials.iter() {
+                material_data.push(GpuMaterial::new(material, &mut global_texture_data));
+            }
+
+            let material_buffer = StorageBuffer::new_from_bytes(
+                &device,
+                bytemuck::cast_slice(material_data.as_slice()),
+                1_u32,
+                Some("material buffer"),
+            );
+
+            let texture_buffer = StorageBuffer::new_from_bytes(
+                &device,
+                bytemuck::cast_slice(global_texture_data.as_slice()),
+                2_u32,
+                Some("texture buffer"),
+            );
+
             let scene_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[
                     sphere_buffer.layout(wgpu::ShaderStages::FRAGMENT, true),
+                    material_buffer.layout(wgpu::ShaderStages::FRAGMENT, true),
+                    texture_buffer.layout(wgpu::ShaderStages::FRAGMENT, true),
                 ],
                 label: Some("scene layout"),
             });
@@ -171,6 +300,8 @@ impl<'a> RenderContext<'a> {
                 layout: &scene_bind_group_layout,
                 entries: &[
                     sphere_buffer.binding(),
+                    material_buffer.binding(),
+                    texture_buffer.binding(),
                 ],
                 label: Some("scene bind group"),
             });

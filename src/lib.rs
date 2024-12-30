@@ -8,7 +8,7 @@ use winit::{
 };
 
 mod render_context;
-use render_context::{RenderContext, Scene, Sphere};
+use render_context::{Material, RenderContext, Scene, Sphere, Texture};
 
 mod vertex;
 mod gpu_buffer;
@@ -65,8 +65,8 @@ pub fn init(width: u32, height: u32) -> (winit::window::Window, winit::event_loo
 #[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]
 pub async fn run() {    
     let (window, event_loop) = init(900, 450);
-    let scenes = Scene {
-        camera: camera::Camera {
+    let scenes = Scene::new(
+        camera::Camera {
             eye_pos: glm::vec3(0.0, 0.0, 1.0),
             eye_dir: glm::vec3(0.0, 0.0, -1.0),
             up: glm::vec3(0.0, 1.0, 0.0),
@@ -74,21 +74,37 @@ pub async fn run() {
             aperture: 0.1,
             focus_distance: 1.0,
         },
-        spheres: vec![
-            Sphere::new(
-                glm::vec3(0.0, -100.5, -1.0),
-                100.0,
+        vec![
+            (
+                Sphere::new(
+                    glm::vec3(0.0, -100.5, -1.0),
+                    100.0,
+                ),
+                Material::Lambertian { 
+                    albedo: Texture::new_from_color(glm::vec3(0.8, 0.8, 0.0)),
+                },
             ),
-            Sphere::new(
-                glm::vec3(0.0, 0.0, -1.2),
-                0.5,
+            (
+                Sphere::new(
+                    glm::vec3(0.0, 0.0, -1.2),
+                    0.5,
+                ),
+                Material::Lambertian { 
+                    albedo: Texture::new_from_color(glm::vec3(0.1, 0.2, 0.5)),
+                }
             ),
-            Sphere::new(
-                glm::vec3(-1.0, 0.0, -1.0),
-                0.5,
-            ),
+            (
+                Sphere::new(
+                    glm::vec3(-1.0, 0.0, -1.0),
+                    0.5,
+                ),
+                Material::Metal { 
+                    albedo: Texture::new_from_color(glm::vec3(0.8, 0.6, 0.2)),
+                    fuzz: 0.5,
+                },
+            )
         ],
-    };
+    );
 
     let mut context = RenderContext::new(&window, &scenes).await;
     let mut surface_configured = false;
