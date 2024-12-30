@@ -8,6 +8,7 @@ pub struct UniformBuffer {
 }
 
 impl UniformBuffer {
+    #[allow(dead_code)]
     pub fn new(
         device: &wgpu::Device,
         buffer_size: wgpu::BufferAddress,
@@ -94,6 +95,7 @@ impl StorageBuffer {
         }
     }
 
+    #[allow(dead_code)]
     pub fn handle(&self) -> &wgpu::Buffer {
         &self.handle
     }

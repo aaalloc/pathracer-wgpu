@@ -1,7 +1,7 @@
 use wgpu::util::DeviceExt;
 use winit::{event::WindowEvent, window::Window};
 
-use crate::{gpu_buffer::{StorageBuffer, UniformBuffer}, scene::{GpuCamera, GpuMaterial, Scene}, vertex::Vertex};
+use crate::{scene::{GpuCamera, GpuMaterial, Scene}, utils::{StorageBuffer, UniformBuffer, Vertex}};
 
 
 pub struct RenderContext<'a> {
@@ -105,7 +105,7 @@ impl<'a> RenderContext<'a> {
                 label: None,
                 memory_hints: Default::default(),
             },
-            None, // Trace path
+            None,
         ).await.unwrap();
 
         let camera_buffer = {
@@ -177,7 +177,7 @@ impl<'a> RenderContext<'a> {
         };
 
         let shader = device.create_shader_module(
-            wgpu::include_wgsl!("shader.wgsl"),
+            wgpu::include_wgsl!("shader/raytracing.wgsl"),
         );
 
         let surface_caps = surface.get_capabilities(&adapter);

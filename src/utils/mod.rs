@@ -1,3 +1,7 @@
+mod gpu_buffer;
+pub use gpu_buffer::{StorageBuffer, UniformBuffer};
+
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {

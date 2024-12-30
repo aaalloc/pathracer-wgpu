@@ -11,8 +11,7 @@ use winit::{
 mod render_context;
 use render_context::RenderContext;
 
-mod vertex;
-mod gpu_buffer;
+mod utils;
 
 mod scene;
 extern crate nalgebra_glm as glm;
