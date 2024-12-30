@@ -18,6 +18,7 @@ pub struct RenderContext<'a> {
     vertex_buffer: wgpu::Buffer,
     image_bind_group: wgpu::BindGroup,
     camera_buffer: UniformBuffer,
+    render_param_buffer: UniformBuffer,
     scene_bind_group: wgpu::BindGroup,
     scene: Scene,
 }
@@ -125,6 +126,15 @@ impl<'a> RenderContext<'a> {
             )
         };
 
+        let render_param_buffer = {
+            UniformBuffer::new_from_bytes(
+                &device,
+                bytemuck::bytes_of(&scene.render_param),
+                1_u32,
+                Some("render param buffer"),
+            )
+        };
+
         let (scene_bind_group_layout, scene_bind_group) = {
             let sphere_buffer = StorageBuffer::new_from_bytes(
                 &device,
@@ -203,6 +213,7 @@ impl<'a> RenderContext<'a> {
         let image_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[
                 camera_buffer.layout(wgpu::ShaderStages::FRAGMENT),
+                render_param_buffer.layout(wgpu::ShaderStages::FRAGMENT),
             ],
             label: Some("image layout"),
         });
@@ -211,6 +222,7 @@ impl<'a> RenderContext<'a> {
             layout: &image_bind_group_layout,
             entries: &[
                 camera_buffer.binding(),
+                render_param_buffer.binding(),
             ],
             label: Some("image bind group"),
         });
@@ -290,6 +302,7 @@ impl<'a> RenderContext<'a> {
             vertex_buffer,
             image_bind_group,
             camera_buffer,
+            render_param_buffer,
             scene_bind_group,
             scene: scene.clone(),
         }
@@ -348,7 +361,7 @@ impl<'a> RenderContext<'a> {
                 timestamp_writes: None,
             });
 
-            {
+            { 
                 let camera = GpuCamera::new(
                     &self.scene.camera,
                     (
@@ -360,6 +373,14 @@ impl<'a> RenderContext<'a> {
                     &self.camera_buffer.handle(),
                     0,
                     bytemuck::bytes_of(&camera),
+                );
+
+                self.scene.render_param.width = self.size.width;
+                self.scene.render_param.height = self.size.height;
+                self.queue.write_buffer(
+                    &self.render_param_buffer.handle(),
+                    0,
+                    bytemuck::bytes_of(&self.scene.render_param),
                 );
             }
 

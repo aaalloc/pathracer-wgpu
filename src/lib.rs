@@ -64,7 +64,9 @@ pub fn init(width: u32, height: u32) -> (winit::window::Window, winit::event_loo
 
 #[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]
 pub async fn run() {    
-    let (window, event_loop) = init(900, 450);
+    let width = 900;
+    let height = 450;
+    let (window, event_loop) = init(width, height);
     let scenes = Scene::new(
         Camera {
             eye_pos: glm::vec3(0.0, 0.0, 1.0),
@@ -104,6 +106,12 @@ pub async fn run() {
                 },
             )
         ],
+        scene::RenderParam {
+            width,
+            height,
+            samples_per_pixel: 100,
+            max_depth: 10,
+        },
     );
 
     let mut context = RenderContext::new(&window, &scenes).await;

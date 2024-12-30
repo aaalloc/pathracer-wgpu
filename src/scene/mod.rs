@@ -11,10 +11,11 @@ pub struct Scene {
     pub camera: Camera,
     pub materials: Vec<Material>,
     pub spheres: Vec<Sphere>,
+    pub render_param: RenderParam,
 }
 
 impl Scene {
-    pub fn new(camera: Camera, spheres: Vec<(Sphere, Material)>,) -> Self {
+    pub fn new(camera: Camera, spheres: Vec<(Sphere, Material)>, render_param: RenderParam) -> Self {
         let mut materials = Vec::new();
         let mut s = Vec::new();
 
@@ -30,8 +31,18 @@ impl Scene {
             camera,
             materials,
             spheres: s,
+            render_param,
         }
     }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct RenderParam {
+    pub width: u32,
+    pub height: u32,
+    pub samples_per_pixel: u32,
+    pub max_depth: u32,
 }
 
 #[repr(C)]
