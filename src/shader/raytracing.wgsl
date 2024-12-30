@@ -45,7 +45,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let x = u32(u * f32(WIDTH));
     let y = u32(v * f32(HEIGHT));
 
-    var rngState: u32 = initRng(
+    var rngState: u32 = init_rng(
         vec2<u32>(u32(x), u32(y)), 
         vec2<u32>(WIDTH, HEIGHT), 
         0u
@@ -58,8 +58,8 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         1.0
     );
 
-    // var noiseState: u32 = initRng(vec2<u32>(u32(u), u32(v)), vec2<u32>(512u, 512u), 0u);
-    // return vec4<f32>(rngNextFloat(&rngState), rngNextFloat(&rngState), rngNextFloat(&rngState), 1.0);
+    // var noiseState: u32 = init_rng(vec2<u32>(u32(u), u32(v)), vec2<u32>(512u, 512u), 0u);
+    // return vec4<f32>(rng_next_float(&rngState), rng_next_float(&rngState), rng_next_float(&rngState), 1.0);
 }
 
 struct Camera {
@@ -177,8 +177,8 @@ fn sample_pixel(rngState: ptr<function, u32>, x: f32, y: f32) -> vec3<f32> {
 }
 
 fn get_ray(rngState: ptr<function, u32>, x: f32, y: f32) -> Ray {
-    let u = f32(x + rngNextFloat(rngState)) / f32(WIDTH); 
-    let v = f32(y + rngNextFloat(rngState)) / f32(HEIGHT);
+    let u = f32(x + rng_next_float(rngState)) / f32(WIDTH); 
+    let v = f32(y + rng_next_float(rngState)) / f32(HEIGHT);
 
     let origin = camera.eye;
     let direction = camera.lowerLeftCorner + u * camera.horizontal + v * camera.vertical - origin;
@@ -191,8 +191,8 @@ fn get_ray(rngState: ptr<function, u32>, x: f32, y: f32) -> Ray {
 const MAX_DEPTH = 10u;
 fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
     var ray = first_ray;
-    var color = vec3(0.0);
-    var throughput = vec3(1.0);
+    var sky_color = vec3(0.0);
+    var color = vec3(1.0);
     var intersection = HitRecord();
 
     for (var i = 0u; i < MAX_DEPTH; i += 1u)
@@ -202,7 +202,7 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
             let material = materials[intersection.material_index];
             let scattered = scatter(ray, intersection, material, rngState);
             // why 0.5 0.5?
-            throughput *= texture_look_up(material.desc, 0.5, 0.5);
+            color *= texture_look_up(material.desc, 0.5, 0.5);
             ray = scattered;
         } 
         else 
@@ -210,11 +210,11 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
             let direction = normalize(ray.direction);
             let a = 0.5 * (direction.y + 1.0);
             var sky = (1.0 - a) * vec3<f32>(1.0, 1.0, 1.0) + a * vec3<f32>(0.5, 0.7, 1);
-            color = sky;
+            sky_color = sky;
             // break;
         }
     }
-    return throughput * color;
+    return color * sky_color;
 }
 
 
@@ -254,7 +254,7 @@ fn reflect(v: vec3<f32>, n: vec3<f32>) -> vec3<f32> {
     return v - 2.0 * dot(v, n) * n;
 }
 
-fn jenkinsHash(input: u32) -> u32 {
+fn jenkin_hash(input: u32) -> u32 {
     var x = input;
     x += x << 10u;
     x ^= x >> 6u;
@@ -264,10 +264,10 @@ fn jenkinsHash(input: u32) -> u32 {
     return x;
 }
 
-fn initRng(pixel: vec2<u32>, resolution: vec2<u32>, frame: u32) -> u32 {
+fn init_rng(pixel: vec2<u32>, resolution: vec2<u32>, frame: u32) -> u32 {
     // Adapted from https://github.com/boksajak/referencePT
-    let seed = dot(pixel, vec2<u32>(1u, resolution.x)) ^ jenkinsHash(frame);
-    return jenkinsHash(seed);
+    let seed = dot(pixel, vec2<u32>(1u, resolution.x)) ^ jenkin_hash(frame);
+    return jenkin_hash(seed);
 }
 
 
@@ -283,9 +283,9 @@ fn random_on_hemisphere(rngState: ptr<function, u32>, normal: vec3<f32>) -> vec3
 
 fn random_in_unit_sphere(state: ptr<function, u32>) -> vec3<f32> {
     // Generate three random numbers x,y,z using Gaussian distribution
-    var x = rngNextFloatGaussian(state);
-    var y = rngNextFloatGaussian(state);
-    var z = rngNextFloatGaussian(state);
+    var x = rng_next_float_gauss(state);
+    var y = rng_next_float_gauss(state);
+    var z = rng_next_float_gauss(state);
 
     // Multiply each number by 1/sqrt(x²+y²+z²) (a.k.a. Normalise) .
     // case x=y=z=0 ?
@@ -294,7 +294,7 @@ fn random_in_unit_sphere(state: ptr<function, u32>) -> vec3<f32> {
     return vec3(x, y, z) / length;
 }
 
-fn rngNextInt(state: ptr<function, u32>) -> u32 {
+fn rng_next_int(state: ptr<function, u32>) -> u32 {
     // PCG random number generator
     // Based on https://www.shadertoy.com/view/XlGcRh
     let newState = *state * 747796405u + 2891336453u;
@@ -303,14 +303,14 @@ fn rngNextInt(state: ptr<function, u32>) -> u32 {
     return (word >> 22u) ^ word;
 }
 
-fn rngNextFloatGaussian(state: ptr<function, u32>) -> f32 {
-    let x1 = rngNextFloat(state);
-    let x2 = rngNextFloat(state);
+fn rng_next_float_gauss(state: ptr<function, u32>) -> f32 {
+    let x1 = rng_next_float(state);
+    let x2 = rng_next_float(state);
     return sqrt(-2.0 * log(x1)) * cos(2.0 * PI * x2);
 }
 
-fn rngNextFloat(state: ptr<function, u32>) -> f32 {
-    let x = rngNextInt(state);
+fn rng_next_float(state: ptr<function, u32>) -> f32 {
+    let x = rng_next_int(state);
     return f32(*state) / f32(0xffffffffu);
 }
 
