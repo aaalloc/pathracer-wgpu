@@ -19,6 +19,7 @@ pub struct RenderContext<'a> {
     image_bind_group: wgpu::BindGroup,
     camera_buffer: UniformBuffer,
     render_param_buffer: UniformBuffer,
+    frame_data_buffer: UniformBuffer,
     scene_bind_group: wgpu::BindGroup,
     scene: Scene,
 }
@@ -126,12 +127,32 @@ impl<'a> RenderContext<'a> {
             )
         };
 
+        let frame_data_buffer = {
+            let frame_data = scene.frame_data;
+            UniformBuffer::new_from_bytes(
+                &device,
+                bytemuck::bytes_of(&frame_data),
+                1_u32,
+                Some("frame data buffer"),
+            )
+        };
+
         let render_param_buffer = {
             UniformBuffer::new_from_bytes(
                 &device,
                 bytemuck::bytes_of(&scene.render_param),
-                1_u32,
+                2_u32,
                 Some("render param buffer"),
+            )
+        };
+
+        let image_buffer = {
+            let buffer = vec![[0_f32; 3]; size.width as usize * size.height as usize];
+            StorageBuffer::new_from_bytes(
+                &device,
+                bytemuck::cast_slice(buffer.as_slice()),
+                3_u32,
+                Some("image buffer"),
             )
         };
 
@@ -213,7 +234,9 @@ impl<'a> RenderContext<'a> {
         let image_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[
                 camera_buffer.layout(wgpu::ShaderStages::FRAGMENT),
+                frame_data_buffer.layout(wgpu::ShaderStages::FRAGMENT),
                 render_param_buffer.layout(wgpu::ShaderStages::FRAGMENT),
+                image_buffer.layout(wgpu::ShaderStages::FRAGMENT, false),
             ],
             label: Some("image layout"),
         });
@@ -222,7 +245,9 @@ impl<'a> RenderContext<'a> {
             layout: &image_bind_group_layout,
             entries: &[
                 camera_buffer.binding(),
+                frame_data_buffer.binding(),
                 render_param_buffer.binding(),
+                image_buffer.binding(),
             ],
             label: Some("image bind group"),
         });
@@ -302,6 +327,7 @@ impl<'a> RenderContext<'a> {
             vertex_buffer,
             image_bind_group,
             camera_buffer,
+            frame_data_buffer,
             render_param_buffer,
             scene_bind_group,
             scene: scene.clone(),
@@ -375,8 +401,23 @@ impl<'a> RenderContext<'a> {
                     bytemuck::bytes_of(&camera),
                 );
 
-                self.scene.render_param.width = self.size.width;
-                self.scene.render_param.height = self.size.height;
+                self.scene.frame_data.width = self.size.width;
+                self.scene.frame_data.height = self.size.height;
+                self.scene.frame_data.index += 1;
+                
+                self.queue.write_buffer(
+                    &self.frame_data_buffer.handle(),
+                    0,
+                    bytemuck::bytes_of(&self.scene.frame_data),
+                );
+
+                if self.scene.render_param.total_samples < self.scene.render_param.samples_max_per_pixel {
+                    self.scene.render_param.total_samples += self.scene.render_param.samples_per_pixel;
+                } 
+                if self.scene.render_param.total_samples > self.scene.render_param.samples_max_per_pixel {
+                    self.scene.render_param.samples_per_pixel = 0;
+                }
+               
                 self.queue.write_buffer(
                     &self.render_param_buffer.handle(),
                     0,

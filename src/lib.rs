@@ -127,10 +127,15 @@ pub async fn run() {
             // ),
         ],
         scene::RenderParam {
+            samples_per_pixel: 1,
+            max_depth: 10,
+            samples_max_per_pixel: 1000,
+            total_samples: 1,
+        },
+        scene::FrameData {
             width,
             height,
-            samples_per_pixel: 100,
-            max_depth: 10,
+            index: 0,
         },
     );
 

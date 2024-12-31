@@ -17,7 +17,9 @@ const MIN_T = 0.001f;
 const MAX_T = 1000f;
 
 @group(0) @binding(0) var<uniform> camera: Camera;
-@group(0) @binding(1) var<uniform> render_param: RenderParam;
+@group(0) @binding(1) var<uniform> frame_data: Frame;
+@group(0) @binding(2) var<uniform> render_param: RenderParam;
+@group(0) @binding(3) var<storage, read_write> image_buffer: array<array<f32, 3>>;
 
 
 @group(1) @binding(0) var<storage, read> spheres: array<Sphere>;
@@ -39,18 +41,26 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let u = in.tex_coords.x;
     let v = in.tex_coords.y;
 
-    let x = u32(u * f32(render_param.width));
-    let y = u32(v * f32(render_param.height));
+    let x = u32(u * f32(frame_data.width));
+    let y = u32(v * f32(frame_data.height));
+    let i = y * frame_data.width + x;
 
     var rngState: u32 = init_rng(
         vec2<u32>(u32(x), u32(y)), 
-        vec2<u32>(render_param.width, render_param.height),
-        0u
+        vec2<u32>(frame_data.width, frame_data.height),
+        frame_data.frame_idx
     );
-    let color = sample_pixel(&rngState, f32(x), f32(y));
+
+    var pixel = vec3(image_buffer[i][0], image_buffer[i][1], image_buffer[i][2]);
+
+    let rgb = sample_pixel(&rngState, f32(x), f32(y));
+    pixel += rgb;
+
+    image_buffer[i] = array<f32, 3>(pixel.r, pixel.g, pixel.b);
+
 
     return vec4<f32>(
-        color / f32(render_param.samples_per_pixel),
+        pixel / f32(render_param.total_samples),
         1.0
     );
 
@@ -59,10 +69,16 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 }
 
 struct RenderParam {
+    samples_max_per_pixel: u32,
+    samples_per_pixel: u32,
+    total_samples: u32,
+    max_depth: u32,
+};
+
+struct Frame {
     width: u32,
     height: u32,
-    samples_per_pixel: u32,
-    max_depth: u32,
+    frame_idx: u32,
 };
 
 struct Camera {
@@ -192,8 +208,8 @@ fn sample_pixel(rngState: ptr<function, u32>, x: f32, y: f32) -> vec3<f32> {
 }
 
 fn get_ray(rngState: ptr<function, u32>, x: f32, y: f32) -> Ray {
-    let u = f32(x + rng_next_float(rngState)) / f32(render_param.width);
-    let v = f32(y + rng_next_float(rngState)) / f32(render_param.height);
+    let u = f32(x + rng_next_float(rngState)) / f32(frame_data.width);
+    let v = f32(y + rng_next_float(rngState)) / f32(frame_data.height);
 
     let origin = camera.eye;
     let direction = camera.lowerLeftCorner + u * camera.horizontal + v * camera.vertical - origin;
