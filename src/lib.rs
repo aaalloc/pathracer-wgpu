@@ -105,13 +105,22 @@ pub async fn run() {
                     fuzz: 0.5,
                 },
             ),
+            (
+                Sphere::new(
+                    glm::vec3(1.0, 0.0, -1.0),
+                    0.5,
+                ),
+                Material::Dialectric { 
+                    ref_idx: 1.5,
+                },
+            ),
             // (
             //     Sphere::new(
             //         glm::vec3(1.0, 0.0, -1.0),
-            //         0.5,
+            //         0.4,
             //     ),
             //     Material::Dialectric { 
-            //         ref_idx: 1.5,
+            //         ref_idx: 0.9,
             //     },
             // ),
         ],

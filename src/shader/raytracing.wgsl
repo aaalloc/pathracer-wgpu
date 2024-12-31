@@ -48,10 +48,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         0u
     );
     let color = sample_pixel(&rngState, f32(x), f32(y));
-    let invNumSamples = 1.0 / f32(render_param.samples_per_pixel);
 
     return vec4<f32>(
-        color * invNumSamples,
+        color / f32(render_param.samples_per_pixel),
         1.0
     );
 
@@ -89,6 +88,7 @@ struct Sphere {
 
 const MAT_LAMBERTIAN = 0u;
 const MAT_METAL = 1u;
+const MAT_DIELECTRIC = 2u;
 
 struct Material {
     id: u32,
@@ -107,6 +107,7 @@ struct HitRecord {
     normal: vec3<f32>,
     t: f32,
     material_index: u32,
+    front_face: bool,
 };
 
 
@@ -153,7 +154,12 @@ fn hit_sphere(
 fn sphereIntersection(ray: Ray, sphere: Sphere, t: f32, material_index: u32) -> HitRecord {
     let p = ray.origin + t * ray.direction;
     var normal = (p - sphere.center.xyz) / sphere.radius;
-    return HitRecord(p, normal, t, material_index);
+    var front_face = true;
+    if dot(ray.direction, normal) > 0.0 {
+        normal = -normal;
+        front_face = false;
+    }
+    return HitRecord(p, normal, t, material_index, front_face);
 }
 
 
@@ -246,6 +252,28 @@ fn scatter(ray: Ray, hit: HitRecord, material: Material, rngState: ptr<function,
             let direction = reflected + fuzz * random_in_unit_sphere(rngState);
             return Scatter(Ray(hit.p, direction), texture_look_up(material.desc, 0.5, 0.5));
         }
+        case MAT_DIELECTRIC: 
+        {
+            var ri: f32 = material.fuzz;
+            if hit.front_face {
+                ri = 1.0 / material.fuzz;
+            }
+
+            let unit_direction = normalize(ray.direction);
+            let cos_theta = min(dot(-unit_direction, hit.normal), 1.0);
+            let sin_theta = sqrt(1.0 - cos_theta * cos_theta);
+
+            var direction = vec3(0.0);
+            let rnd_float = rng_next_float(rngState);
+            if ri * sin_theta > 1.0 || reflectance(cos_theta, ri) > rnd_float {
+                direction = reflect(unit_direction, hit.normal);
+            } else {
+                direction = refract(unit_direction, hit.normal, ri);
+            }
+
+
+            return Scatter(Ray(hit.p, direction), vec3(1.0));
+        }
         default: {
             return Scatter(Ray(vec3(0.0), vec3(0.0)), vec3(0.0));
         }
@@ -260,6 +288,20 @@ fn vec3_near_zero(v: vec3<f32>) -> bool {
 fn reflect(v: vec3<f32>, n: vec3<f32>) -> vec3<f32> {
     return v - 2.0 * dot(v, n) * n;
 }
+
+fn refract(uv: vec3<f32>, n: vec3<f32>, etai_over_etat: f32) -> vec3<f32> {
+    let cos_theta = dot(-uv, n);
+    let r_out_perp = etai_over_etat * (uv + cos_theta * n);
+    let r_out_parallel = -sqrt(abs(1.0 - length(r_out_perp) * length(r_out_perp))) * n;
+    return r_out_perp + r_out_parallel;
+}
+
+fn reflectance(cosine: f32, ref_idx: f32) -> f32 {
+    var r0 = (1.0 - ref_idx) / (1.0 + ref_idx);
+    r0 = r0 * r0;
+    return r0 + (1.0 - r0) * pow(1.0 - cosine, 5.0);
+}
+
 
 fn jenkin_hash(input: u32) -> u32 {
     var x = input;
