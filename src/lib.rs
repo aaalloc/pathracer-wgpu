@@ -111,9 +111,11 @@ pub async fn run() {
                     0.5,
                 ),
                 Material::Dialectric { 
-                    ref_idx: 1.5,
+                    ref_idx: 1.0/1.33,
                 },
             ),
+            // when 2 dialectric are in 2 each other, black border appears
+            // TODO: fix this
             // (
             //     Sphere::new(
             //         glm::vec3(1.0, 0.0, -1.0),

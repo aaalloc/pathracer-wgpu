@@ -88,7 +88,7 @@ impl GpuMaterial {
                     descriptor: TextureDescriptor {
                         width: 0,
                         height: 0,
-                        offset: 0,
+                        offset: 0xffffffff,
                     },
                     x: *ref_idx,
                 }
