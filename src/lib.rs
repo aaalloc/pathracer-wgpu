@@ -64,8 +64,8 @@ pub fn init(width: u32, height: u32) -> (winit::window::Window, winit::event_loo
 
 #[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]
 pub async fn run() {    
-    let width = 900;
-    let height = 450;
+    let width = 900 * 2;
+    let height = 450 * 2;
     let (window, event_loop) = init(width, height);
     let scenes = Scene::new(
         Camera {
@@ -164,7 +164,6 @@ pub async fn run() {
                             log::info!("Surface not configured yet");
                             return;
                         }
-                        
                         context.update();
                         match context.render() {
                             Ok(_) => {},

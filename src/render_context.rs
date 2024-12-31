@@ -21,6 +21,7 @@ pub struct RenderContext<'a> {
     render_param_buffer: UniformBuffer,
     frame_data_buffer: UniformBuffer,
     scene_bind_group: wgpu::BindGroup,
+    image_buffer: StorageBuffer,
     scene: Scene,
 }
 
@@ -327,6 +328,7 @@ impl<'a> RenderContext<'a> {
             vertex_buffer,
             image_bind_group,
             camera_buffer,
+            image_buffer,
             frame_data_buffer,
             render_param_buffer,
             scene_bind_group,
@@ -344,6 +346,25 @@ impl<'a> RenderContext<'a> {
             self.config.width = new_size.width;
             self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
+
+            self.scene.render_param.total_samples = 1;
+            self.scene.render_param.samples_per_pixel = 1;
+            self.scene.frame_data.index = 0;
+            
+            let empty_image = vec![[0_f32; 3]; new_size.width as usize * new_size.height as usize];
+            self.queue.write_buffer(
+                &self.image_buffer.handle(),
+                0,
+                bytemuck::cast_slice(empty_image.as_slice()),
+            );
+
+            //TODO: Find a way of doing this
+            // self.image_buffer.resize(
+            //     &self.device,
+            //     bytemuck::cast_slice(
+            //         vec![[0_f32; 3]; new_size.width as usize * new_size.height as usize].as_slice()
+            //     ),
+            // );
         }
     }
 
@@ -414,7 +435,7 @@ impl<'a> RenderContext<'a> {
                 if self.scene.render_param.total_samples < self.scene.render_param.samples_max_per_pixel {
                     self.scene.render_param.total_samples += self.scene.render_param.samples_per_pixel;
                 } 
-                if self.scene.render_param.total_samples > self.scene.render_param.samples_max_per_pixel {
+                if self.scene.render_param.total_samples >= self.scene.render_param.samples_max_per_pixel {
                     self.scene.render_param.samples_per_pixel = 0;
                 }
                
