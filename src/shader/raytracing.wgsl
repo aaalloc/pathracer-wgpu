@@ -110,6 +110,11 @@ struct HitRecord {
 };
 
 
+struct Scatter {
+    scattered: Ray,
+    attenuation: vec3<f32>,
+}
+
 fn hit_sphere(
     sphere_index: u32,
     ray: Ray,
@@ -204,9 +209,8 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
         {
             let material = materials[intersection.material_index];
             let scattered = scatter(ray, intersection, material, rngState);
-            // why 0.5 0.5?
-            color *= texture_look_up(material.desc, 0.5, 0.5);
-            ray = scattered;
+            color *= scattered.attenuation;
+            ray = scattered.scattered;
         } 
         else 
         {
@@ -222,7 +226,7 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
 
 
 
-fn scatter(ray: Ray, hit: HitRecord, material: Material, rngState: ptr<function, u32>) -> Ray {
+fn scatter(ray: Ray, hit: HitRecord, material: Material, rngState: ptr<function, u32>) -> Scatter {
     switch (material.id) 
     {
         case MAT_LAMBERTIAN: 
@@ -230,20 +234,20 @@ fn scatter(ray: Ray, hit: HitRecord, material: Material, rngState: ptr<function,
             let t = hit.p + hit.normal + random_on_hemisphere(rngState, hit.normal);
             
             if vec3_near_zero(t - hit.p) {
-                return Ray(hit.p, hit.normal);
+                return Scatter(Ray(hit.p, hit.normal), texture_look_up(material.desc, 0.5, 0.5));
             }
 
-            return Ray(hit.p, t - hit.p);
+            return Scatter(Ray(hit.p, t - hit.p), texture_look_up(material.desc, 0.5, 0.5));
         }
         case MAT_METAL: 
         {
             let reflected = reflect(normalize(ray.direction), hit.normal);
             let fuzz = material.fuzz;
             let direction = reflected + fuzz * random_in_unit_sphere(rngState);
-            return Ray(hit.p, direction);
+            return Scatter(Ray(hit.p, direction), texture_look_up(material.desc, 0.5, 0.5));
         }
         default: {
-            return Ray(vec3(0.0), vec3(0.0));
+            return Scatter(Ray(vec3(0.0), vec3(0.0)), vec3(0.0));
         }
     }
 }

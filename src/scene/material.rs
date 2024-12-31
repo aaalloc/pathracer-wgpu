@@ -39,6 +39,9 @@ pub enum Material {
         albedo: Texture,
         fuzz: f32,
     },
+    Dialectric {
+        ref_idx: f32,
+    },
 }
 
 #[repr(C)]
@@ -77,6 +80,17 @@ impl GpuMaterial {
                     id: 1,
                     descriptor: Self::append_to_global_texture_data(albedo, global_texture_data),
                     x: *fuzz,
+                }
+            }
+            Material::Dialectric { ref_idx } => {
+                Self {
+                    id: 2,
+                    descriptor: TextureDescriptor {
+                        width: 0,
+                        height: 0,
+                        offset: 0,
+                    },
+                    x: *ref_idx,
                 }
             }
         }

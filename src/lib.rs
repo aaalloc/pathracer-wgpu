@@ -104,7 +104,16 @@ pub async fn run() {
                     albedo: Texture::new_from_color(glm::vec3(0.8, 0.6, 0.2)),
                     fuzz: 0.5,
                 },
-            )
+            ),
+            // (
+            //     Sphere::new(
+            //         glm::vec3(1.0, 0.0, -1.0),
+            //         0.5,
+            //     ),
+            //     Material::Dialectric { 
+            //         ref_idx: 1.5,
+            //     },
+            // ),
         ],
         scene::RenderParam {
             width,
