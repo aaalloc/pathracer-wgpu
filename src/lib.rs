@@ -3,9 +3,7 @@ use scene::{Camera, CameraController, Material, Scene, Sphere, Texture};
 use wasm_bindgen::prelude::*;
 
 use winit::{
-    event::*,
-    event_loop::EventLoop,
-    keyboard::{KeyCode, PhysicalKey}, window::WindowBuilder,
+    application::ApplicationHandler, event::*, event_loop::{ActiveEventLoop, EventLoop}, keyboard::{KeyCode, PhysicalKey}, window::{Window, WindowAttributes, WindowId}
 };
 
 mod render_context;
@@ -17,7 +15,81 @@ mod scene;
 extern crate nalgebra_glm as glm;
 
 
-pub fn init(width: u32, height: u32) -> (winit::window::Window, winit::event_loop::EventLoop<()>) {
+struct MyUserEvent;
+
+struct State<'a> {
+    window: &'a Window,
+    render_context: RenderContext<'a>,
+    last_time: instant::Instant,
+    counter: i32,
+}
+
+impl ApplicationHandler<MyUserEvent> for State<'_> {
+    fn user_event(&mut self, _event_loop: &ActiveEventLoop, _user_eventt: MyUserEvent) {
+        // Handle user event.
+    }
+
+    fn resumed(&mut self, _event_loop: &ActiveEventLoop) {
+        // Your application got resumed.
+    }
+
+    fn window_event(
+        &mut self, 
+        event_loop: &ActiveEventLoop, 
+        _window_id: WindowId, 
+        event: WindowEvent
+    ) {
+        self.render_context.input(&event);
+        match event {
+            WindowEvent::CloseRequested
+            | WindowEvent::KeyboardInput {
+                event:
+                    KeyEvent {
+                        state: ElementState::Pressed,
+                        physical_key: PhysicalKey::Code(KeyCode::Escape),
+                        ..
+                    },
+                ..
+            } => event_loop.exit(),
+            WindowEvent::RedrawRequested => {
+                self.window.request_redraw();
+                let now = instant::Instant::now();
+                let dt = now - self.last_time;
+                self.last_time = now;
+
+                self.render_context.update(dt);
+                match self.render_context.render() {
+                    Ok(_) => {},
+                    Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated)
+                        =>  self.render_context.resize( self.render_context.size),
+                    Err(wgpu::SurfaceError::OutOfMemory) => {
+                        log::error!("Out of memory");
+                        event_loop.exit();
+                    }
+                    // This happens when the a frame takes too long to present
+                    Err(wgpu::SurfaceError::Timeout) => {
+                        log::warn!("Surface timeout")
+                    }
+                }
+            },
+            WindowEvent::Resized(physical_size) => {
+                self.render_context.resize(physical_size);
+            },
+            _ => {}
+        }
+    }
+
+    fn device_event(&mut self, _event_loop: &ActiveEventLoop, _device_id: DeviceId, _event: DeviceEvent) {
+        // Handle device event.
+    }
+
+    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+        self.window.request_redraw();
+        self.counter += 1;
+    }
+}
+
+fn init(width: u32, height: u32) -> (winit::window::Window, winit::event_loop::EventLoop<MyUserEvent>) {
     cfg_if::cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
             std::panic::set_hook(Box::new(console_error_panic_hook::hook));
@@ -28,16 +100,17 @@ pub fn init(width: u32, height: u32) -> (winit::window::Window, winit::event_loo
     }
      
     log::info!("Starting up");
-    let event_loop: EventLoop<()> = EventLoop::new().unwrap();
-
-
-
-
-    let window = WindowBuilder::new()
-        .with_title("Raytracer")
-        .with_inner_size(winit::dpi::PhysicalSize::new(width, height))
-        .build(&event_loop)
-        .unwrap();
+    
+    
+    
+    
+    let event_loop = EventLoop::<MyUserEvent>::with_user_event().build().unwrap();
+    #[allow(deprecated)]
+    let window = event_loop.create_window(
+        WindowAttributes::default()
+    .with_title("Raytracer")
+    .with_inner_size(winit::dpi::PhysicalSize::new(width, height))
+    ).unwrap();
     
 
     #[cfg(target_arch = "wasm32")]
@@ -142,55 +215,30 @@ pub async fn run() {
         )
     );
 
-    let mut context = RenderContext::new(&window, &scenes).await;
-    let mut last_render_time = instant::Instant::now();
-    event_loop.run(move |event, control_flow| {
-        match event {
-            Event::WindowEvent {
-                ref event,
-                window_id,
-            } if window_id == context.window().id() => if !context.input(event) {
-                match event {
-                    WindowEvent::CloseRequested
-                    | WindowEvent::KeyboardInput {
-                        event:
-                            KeyEvent {
-                                state: ElementState::Pressed,
-                                physical_key: PhysicalKey::Code(KeyCode::Escape),
-                                ..
-                            },
-                        ..
-                    } => control_flow.exit(),
-                    WindowEvent::RedrawRequested => {
-                        context.window().request_redraw();
-                        let now = instant::Instant::now();
-                        let dt = now - last_render_time;
-                        last_render_time = now;
 
-                        context.update(dt);
-                        match context.render() {
-                            Ok(_) => {},
-                            Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated)
-                                => context.resize(context.size),
-                            Err(wgpu::SurfaceError::OutOfMemory) => {
-                                log::error!("Out of memory");
-                                control_flow.exit();
-                            }
-                            // This happens when the a frame takes too long to present
-                            Err(wgpu::SurfaceError::Timeout) => {
-                                log::warn!("Surface timeout")
-                            }
-                        }
-                    },
-                    WindowEvent::Resized(physical_size) => {
-                        context.resize(*physical_size);
-                    },
-                    _ => {}
-                }
-            },
-            _ => {}
-        }
-    }).unwrap();
+    // The instance is a handle to our GPU
+    // Backends::all => Vulkan + Metal + DX12 + Browser WebGPU
+    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        #[cfg(not(target_arch="wasm32"))]
+        backends: wgpu::Backends::PRIMARY,
+        #[cfg(target_arch="wasm32")]
+        backends: wgpu::Backends::GL,
+        ..Default::default()
+    });
+        
+    let surface: wgpu::Surface<'_> = instance.create_surface(&window).unwrap();
 
-
+    let mut state = State {
+        window: &window,
+        last_time: instant::Instant::now(),
+        render_context: RenderContext::new(
+            window.inner_size(),
+            surface,
+            instance,
+            &scenes
+        ).await,
+        counter: 0,
+    };
+    
+    let _ = event_loop.run_app(&mut state);
 }

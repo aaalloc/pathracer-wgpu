@@ -10,10 +10,6 @@ pub struct RenderContext<'a> {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     pub size: winit::dpi::PhysicalSize<u32>,
-    // The window must be declared after the surface so
-    // it gets dropped after it as the surface contains
-    // unsafe references to the window's resources.
-    window: &'a Window,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     image_bind_group: wgpu::BindGroup,
@@ -52,23 +48,11 @@ const VERTICES_LEN: usize = VERTICES.len();
 
 impl<'a> RenderContext<'a> {
     pub async fn new(
-        window: &'a Window,
+        size: winit::dpi::PhysicalSize<u32>,
+        surface: wgpu::Surface<'a>,
+        instance: wgpu::Instance,
         scene: &Scene,
     ) -> RenderContext<'a> {
-        let size = window.inner_size();
-
-        // The instance is a handle to our GPU
-        // Backends::all => Vulkan + Metal + DX12 + Browser WebGPU
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            #[cfg(not(target_arch="wasm32"))]
-            backends: wgpu::Backends::PRIMARY,
-            #[cfg(target_arch="wasm32")]
-            backends: wgpu::Backends::GL,
-            ..Default::default()
-        });
-        
-        let surface = instance.create_surface(window).unwrap();
-
         let adapter = instance.request_adapter(
             &wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
@@ -303,7 +287,6 @@ impl<'a> RenderContext<'a> {
         );
 
         Self {
-            window,
             surface,
             device,
             queue,
@@ -319,10 +302,6 @@ impl<'a> RenderContext<'a> {
             scene: scene.clone(),
             latest_scene: scene.clone(),
         }
-    }
-
-    pub fn window(&self) -> &Window {
-        &self.window
     }
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
