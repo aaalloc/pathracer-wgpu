@@ -31,35 +31,20 @@ pub struct RenderContext<'a> {
 //     Vertex { position: [0.5, -0.5, 0.0], color: [0.0, 0.0, 1.0] },
 // ];
 
-// TODO: Pass from 2 triangles to 1 triangle
 // https://webgpufundamentals.org/webgpu/lessons/webgpu-large-triangle-to-cover-clip-space.html
-
 // https://sotrh.github.io/learn-wgpu/beginner/tutorial5-textures/#the-results
-// tex needs to be flipped somehow
 const VERTICES: &[Vertex] = &[
     Vertex {
-        position: [-1.0, 1.0],
-        tex_coords: [0.0, 1.0],
-    },
-    Vertex {
-        position: [-1.0, -1.0],
+        position: [-1.0, -1.0], // Bottom-left
         tex_coords: [0.0, 0.0],
     },
     Vertex {
-        position: [1.0, -1.0],
-        tex_coords: [1.0, 0.0],
+        position: [3.0, -1.0],  // Bottom-right (extends beyond clip space)
+        tex_coords: [2.0, 0.0],
     },
     Vertex {
-        position: [-1.0, 1.0],
-        tex_coords: [0.0,1.0],
-    },
-    Vertex {
-        position: [1.0, -1.0],
-        tex_coords: [1.0, 0.0],
-    },
-    Vertex {
-        position: [1.0, 1.0],
-        tex_coords: [1.0, 1.0],
+        position: [-1.0, 3.0],  // Top-left (extends beyond clip space)
+        tex_coords: [0.0, 2.0],
     },
 ];
 
