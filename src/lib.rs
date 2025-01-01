@@ -69,14 +69,23 @@ pub async fn run() {
     let (window, event_loop) = init(width, height);
     let scenes = Scene::new(
         Camera {
-            eye_pos: glm::vec3(0.0, 0.0, 1.0),
-            eye_dir: glm::vec3(0.0, 0.0, -1.0),
+            eye_pos: glm::vec3(1.0, 0.0, 1.0),
+            eye_dir: glm::vec3(-1.0, 0.0, -1.0),
             up: glm::vec3(0.0, 1.0, 0.0),
             vfov: 45.0,
             aperture: 0.1,
             focus_distance: 1.0,
         },
         vec![
+            (
+                Sphere::new(
+                    glm::vec3(0.0, 0.0, -1.0),
+                    0.5,
+                ),
+                Material::Lambertian { 
+                    albedo: Texture::new_from_color(glm::vec3(0.1, 0.2, 0.5)),
+                }
+            ),
             (
                 Sphere::new(
                     glm::vec3(0.0, -100.5, -1.0),
@@ -88,21 +97,12 @@ pub async fn run() {
             ),
             (
                 Sphere::new(
-                    glm::vec3(0.0, 0.0, -1.2),
-                    0.5,
-                ),
-                Material::Lambertian { 
-                    albedo: Texture::new_from_color(glm::vec3(0.1, 0.2, 0.5)),
-                }
-            ),
-            (
-                Sphere::new(
                     glm::vec3(-1.0, 0.0, -1.0),
                     0.5,
                 ),
                 Material::Metal { 
                     albedo: Texture::new_from_color(glm::vec3(0.8, 0.6, 0.2)),
-                    fuzz: 0.5,
+                    fuzz: 0.0,
                 },
             ),
             (
@@ -111,20 +111,18 @@ pub async fn run() {
                     0.5,
                 ),
                 Material::Dialectric { 
-                    ref_idx: 1.0/1.33,
+                    ref_idx: 1.5,
                 },
             ),
-            // when 2 dialectric are in 2 each other, black border appears
-            // TODO: fix this
-            // (
-            //     Sphere::new(
-            //         glm::vec3(1.0, 0.0, -1.0),
-            //         0.4,
-            //     ),
-            //     Material::Dialectric { 
-            //         ref_idx: 0.9,
-            //     },
-            // ),
+            (
+                Sphere::new(
+                    glm::vec3(1.0, 0.0, -1.0),
+                    0.4,
+                ),
+                Material::Dialectric { 
+                    ref_idx: 1.0/1.5,
+                },
+            ),
         ],
         scene::RenderParam {
             samples_per_pixel: 1,

@@ -6,7 +6,6 @@ pub struct Camera {
     pub eye_pos: glm::Vec3,
     pub eye_dir: glm::Vec3,
     pub up: glm::Vec3,
-    /// Angle must be between 0..=90 degrees.
     pub vfov: f32,
     /// Aperture must be between 0..=1.
     pub aperture: f32,

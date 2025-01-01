@@ -131,7 +131,7 @@ struct HitRecord {
 
 
 struct Scatter {
-    scattered: Ray,
+    ray: Ray,
     attenuation: vec3<f32>,
 }
 
@@ -189,7 +189,7 @@ fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool 
 
     for (var i = 0u; i < arrayLength(&spheres); i += 1u) 
     {
-        if hit_sphere(i, ray, MIN_T, MAX_T, &tmp_rec) 
+        if hit_sphere(i, ray, MIN_T, closest_so_far, &tmp_rec) 
         {
             hit_anything = true;
             closest_so_far = tmp_rec.t;
@@ -226,16 +226,16 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
     var ray = first_ray;
     var sky_color = vec3(0.0);
     var color = vec3(1.0);
-    var intersection = HitRecord();
 
     for (var i = 0u; i < render_param.max_depth; i += 1u)
     {
+        var intersection = HitRecord();
         if check_intersection(ray, &intersection)
         {
             let material = materials[intersection.material_index];
             let scattered = scatter(ray, intersection, material, rngState);
             color *= scattered.attenuation;
-            ray = scattered.scattered;
+            ray = scattered.ray;
         } 
         else 
         {
