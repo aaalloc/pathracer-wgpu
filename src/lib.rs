@@ -1,4 +1,4 @@
-use scene::{Camera, Material, Scene, Sphere, Texture};
+use scene::{Camera, CameraController, Material, Scene, Sphere, Texture};
 #[cfg(target_arch="wasm32")]
 use wasm_bindgen::prelude::*;
 
@@ -130,17 +130,22 @@ pub async fn run() {
             samples_per_pixel: 1,
             max_depth: 10,
             samples_max_per_pixel: 1000,
-            total_samples: 1,
+            total_samples: 0,
+            clear_samples: 0,
         },
         scene::FrameData {
             width,
             height,
             index: 0,
         },
+        CameraController::new(
+            4.0, 
+            0.4
+        )
     );
 
     let mut context = RenderContext::new(&window, &scenes).await;
-    let mut surface_configured = false;
+    let mut last_render_time = instant::Instant::now();
     event_loop.run(move |event, control_flow| {
         match event {
             Event::WindowEvent {
@@ -160,11 +165,11 @@ pub async fn run() {
                     } => control_flow.exit(),
                     WindowEvent::RedrawRequested => {
                         context.window().request_redraw();
-                        if !surface_configured {
-                            log::info!("Surface not configured yet");
-                            return;
-                        }
-                        context.update();
+                        let now = instant::Instant::now();
+                        let dt = now - last_render_time;
+                        last_render_time = now;
+
+                        context.update(dt);
                         match context.render() {
                             Ok(_) => {},
                             Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated)
@@ -180,7 +185,6 @@ pub async fn run() {
                         }
                     },
                     WindowEvent::Resized(physical_size) => {
-                        surface_configured = true;
                         context.resize(*physical_size);
                     },
                     _ => {}

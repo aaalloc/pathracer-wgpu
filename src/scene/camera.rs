@@ -1,4 +1,7 @@
-#[derive(Clone, Copy, PartialEq)]
+use winit::{dpi::PhysicalPosition, event::{ElementState, MouseScrollDelta}, keyboard::KeyCode};
+use instant::Duration;
+
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Camera {
     pub eye_pos: glm::Vec3,
     pub eye_dir: glm::Vec3,
@@ -9,6 +12,122 @@ pub struct Camera {
     pub aperture: f32,
     /// Focus distance must be a positive number.
     pub focus_distance: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CameraController {
+    updated: bool,
+    amount_left: f32,
+    amount_right: f32,
+    amount_forward: f32,
+    amount_backward: f32,
+    amount_up: f32,
+    amount_down: f32,
+    rotate_horizontal: f32,
+    rotate_vertical: f32,
+    scroll: f32,
+    speed: f32,
+    sensitivity: f32,
+}
+
+impl CameraController {
+    pub fn new(speed: f32, sensitivity: f32) -> Self {
+        Self {
+            updated: false,
+            amount_left: 0.0,
+            amount_right: 0.0,
+            amount_forward: 0.0,
+            amount_backward: 0.0,
+            amount_up: 0.0,
+            amount_down: 0.0,
+            rotate_horizontal: 0.0,
+            rotate_vertical: 0.0,
+            scroll: 0.0,
+            speed,
+            sensitivity,
+        }
+    }
+    
+    pub fn process_keyboard(&mut self, key: KeyCode, state: ElementState) -> bool{
+        let amount = if state == ElementState::Pressed { 1.0 } else { 0.0 };
+        let s = match key {
+            KeyCode::KeyW | KeyCode::ArrowUp => {
+                self.amount_forward = amount;
+                true
+            }
+            KeyCode::KeyS | KeyCode::ArrowDown => {
+                self.amount_backward = amount;
+                true
+            }
+            KeyCode::KeyA | KeyCode::ArrowLeft => {
+                self.amount_left = amount;
+                true
+            }
+            KeyCode::KeyD | KeyCode::ArrowRight => {
+                self.amount_right = amount;
+                true
+            }
+            KeyCode::Space => {
+                self.amount_up = amount;
+                true
+            }
+            KeyCode::ShiftLeft => {
+                self.amount_down = amount;
+                true
+            }
+            _ => false,
+        };
+        self.updated = s;
+        s
+    }
+
+    pub fn process_mouse(&mut self, mouse_dx: f64, mouse_dy: f64) {
+        self.rotate_horizontal = mouse_dx as f32;
+        self.rotate_vertical = mouse_dy as f32;
+    }
+
+    pub fn process_scroll(&mut self, delta: &MouseScrollDelta) {
+        self.scroll = -match delta {
+            // I'm assuming a line is about 100 pixels
+            MouseScrollDelta::LineDelta(_, scroll) => scroll * 100.0,
+            MouseScrollDelta::PixelDelta(PhysicalPosition {
+                y: scroll,
+                ..
+            }) => *scroll as f32,
+        };
+    }
+    pub fn update_camera(&mut self, camera: &mut Camera, dt: Duration) {
+        let forward = self.amount_forward - self.amount_backward;
+        let right = self.amount_right - self.amount_left;
+        let up = self.amount_up - self.amount_down;
+        let rotate_horizontal = self.rotate_horizontal;
+        let rotate_vertical = self.rotate_vertical;
+        let scroll = self.scroll;
+
+        let dt = dt.as_secs_f32();
+        let speed = self.speed;
+        let sensitivity = self.sensitivity;
+
+        let forward = forward * speed * dt;
+        let right = right * speed * dt;
+        let up = up * speed * dt;
+        let rotate_horizontal = rotate_horizontal * sensitivity * dt;
+        let rotate_vertical = rotate_vertical * sensitivity * dt;
+        let scroll = scroll * speed * dt;
+
+        let forward = camera.eye_dir * forward;
+        let right = glm::cross(&camera.eye_dir, &camera.up) * right;
+        let up = camera.up * up;
+
+
+        camera.eye_pos += forward + right + up;
+        camera.eye_dir = glm::rotate_vec3(&camera.eye_dir, rotate_horizontal, &camera.up);
+        camera.eye_dir = glm::rotate_vec3(&camera.eye_dir, rotate_vertical, &glm::cross(&camera.eye_dir, &camera.up));
+        camera.eye_dir = glm::normalize(&camera.eye_dir);
+
+        camera.focus_distance -= scroll;
+        camera.focus_distance = camera.focus_distance.max(0.1);
+    }
 }
 
 #[repr(C)]

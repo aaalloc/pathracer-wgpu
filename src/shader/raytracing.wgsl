@@ -53,13 +53,13 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
     var pixel = vec3(image_buffer[i][0], image_buffer[i][1], image_buffer[i][2]);
 
-    if (render_param.samples_per_pixel > 0u) {
-        let rgb = sample_pixel(&rngState, f32(x), f32(y));
-        pixel += rgb;
-        image_buffer[i] = array<f32, 3>(pixel.r, pixel.g, pixel.b);
+    if render_param.clear_samples == 1u {
+        pixel = vec3(0.0);
     }
 
-
+    let rgb = sample_pixel(&rngState, f32(x), f32(y));
+    pixel += rgb;
+    image_buffer[i] = array<f32, 3>(pixel.r, pixel.g, pixel.b);
 
     return vec4<f32>(
         pixel / f32(render_param.total_samples),
@@ -74,6 +74,7 @@ struct RenderParam {
     samples_max_per_pixel: u32,
     samples_per_pixel: u32,
     total_samples: u32,
+    clear_samples: u32,
     max_depth: u32,
 };
 

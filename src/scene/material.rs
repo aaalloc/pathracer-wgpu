@@ -1,4 +1,4 @@
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Texture {
     dimensions: (u32, u32),
     data: Vec<[f32; 3]>,
@@ -30,7 +30,7 @@ impl Texture {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum Material {
     Lambertian {
         albedo: Texture,

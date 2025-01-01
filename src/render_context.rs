@@ -1,5 +1,5 @@
 use wgpu::util::DeviceExt;
-use winit::{event::WindowEvent, window::Window};
+use winit::{event::{KeyEvent, WindowEvent}, keyboard::PhysicalKey, window::Window};
 
 use crate::{scene::{GpuCamera, GpuMaterial, Scene}, utils::{StorageBuffer, UniformBuffer, Vertex}};
 
@@ -21,8 +21,8 @@ pub struct RenderContext<'a> {
     render_param_buffer: UniformBuffer,
     frame_data_buffer: UniformBuffer,
     scene_bind_group: wgpu::BindGroup,
-    image_buffer: StorageBuffer,
     scene: Scene,
+    latest_scene: Scene,
 }
 
 // const RGB_TRIANGLE: &[Vertex] = &[
@@ -328,11 +328,11 @@ impl<'a> RenderContext<'a> {
             vertex_buffer,
             image_bind_group,
             camera_buffer,
-            image_buffer,
             frame_data_buffer,
             render_param_buffer,
             scene_bind_group,
             scene: scene.clone(),
+            latest_scene: scene.clone(),
         }
     }
 
@@ -346,35 +346,33 @@ impl<'a> RenderContext<'a> {
             self.config.width = new_size.width;
             self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
-
-            self.scene.render_param.total_samples = 1;
-            self.scene.render_param.samples_per_pixel = 1;
-            self.scene.frame_data.index = 0;
-            
-            let empty_image = vec![[0_f32; 3]; new_size.width as usize * new_size.height as usize];
-            self.queue.write_buffer(
-                &self.image_buffer.handle(),
-                0,
-                bytemuck::cast_slice(empty_image.as_slice()),
-            );
-
-            //TODO: Find a way of doing this
-            // self.image_buffer.resize(
-            //     &self.device,
-            //     bytemuck::cast_slice(
-            //         vec![[0_f32; 3]; new_size.width as usize * new_size.height as usize].as_slice()
-            //     ),
-            // );
         }
     }
 
     pub fn input(&mut self, event: &WindowEvent) -> bool {
         match event {
+            WindowEvent::KeyboardInput {
+                event:
+                    KeyEvent {
+                        physical_key: PhysicalKey::Code(key),
+                        state,
+                        ..
+                    },
+                ..
+            } => {
+                self.scene.camera_controller.process_keyboard(*key, *state)
+            }
             _ => false,
         }
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self, dt: std::time::Duration) {
+        self.scene.camera_controller.update_camera(&mut self.scene.camera, dt);
+
+        if self.latest_scene != self.scene {
+            self.latest_scene = self.scene.clone();
+            self.scene.render_param.total_samples = 0;
+        }
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
@@ -408,7 +406,7 @@ impl<'a> RenderContext<'a> {
                 timestamp_writes: None,
             });
 
-            { 
+            {
                 let camera = GpuCamera::new(
                     &self.scene.camera,
                     (
@@ -416,6 +414,7 @@ impl<'a> RenderContext<'a> {
                         self.size.height
                     )
                 );
+
                 self.queue.write_buffer(
                     &self.camera_buffer.handle(),
                     0,
@@ -432,13 +431,8 @@ impl<'a> RenderContext<'a> {
                     bytemuck::bytes_of(&self.scene.frame_data),
                 );
 
-                if self.scene.render_param.total_samples < self.scene.render_param.samples_max_per_pixel {
-                    self.scene.render_param.total_samples += self.scene.render_param.samples_per_pixel;
-                } 
-                if self.scene.render_param.total_samples >= self.scene.render_param.samples_max_per_pixel {
-                    self.scene.render_param.samples_per_pixel = 0;
-                }
-               
+                self.scene.render_param.update();
+
                 self.queue.write_buffer(
                     &self.render_param_buffer.handle(),
                     0,
