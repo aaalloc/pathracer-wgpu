@@ -216,25 +216,11 @@ pub async fn run() {
     );
 
 
-    // The instance is a handle to our GPU
-    // Backends::all => Vulkan + Metal + DX12 + Browser WebGPU
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-        #[cfg(not(target_arch="wasm32"))]
-        backends: wgpu::Backends::PRIMARY,
-        #[cfg(target_arch="wasm32")]
-        backends: wgpu::Backends::GL,
-        ..Default::default()
-    });
-        
-    let surface: wgpu::Surface<'_> = instance.create_surface(&window).unwrap();
-
     let mut state = State {
         window: &window,
         last_time: instant::Instant::now(),
         render_context: RenderContext::new(
-            window.inner_size(),
-            surface,
-            instance,
+            &window,
             &scenes
         ).await,
         counter: 0,

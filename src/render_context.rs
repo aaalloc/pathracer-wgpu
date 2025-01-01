@@ -1,7 +1,8 @@
+use egui_wgpu::ScreenDescriptor;
 use wgpu::util::DeviceExt;
 use winit::{event::{KeyEvent, WindowEvent}, keyboard::PhysicalKey, window::Window};
 
-use crate::{scene::{GpuCamera, GpuMaterial, Scene}, utils::{StorageBuffer, UniformBuffer, Vertex}};
+use crate::{scene::{GpuCamera, GpuMaterial, Scene}, utils::{EguiRenderer, StorageBuffer, UniformBuffer, Vertex}};
 
 
 pub struct RenderContext<'a> {
@@ -10,6 +11,7 @@ pub struct RenderContext<'a> {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     pub size: winit::dpi::PhysicalSize<u32>,
+    window: &'a Window,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     image_bind_group: wgpu::BindGroup,
@@ -19,6 +21,7 @@ pub struct RenderContext<'a> {
     scene_bind_group: wgpu::BindGroup,
     scene: Scene,
     latest_scene: Scene,
+    pub egui_renderer: EguiRenderer,
 }
 
 // const RGB_TRIANGLE: &[Vertex] = &[
@@ -48,11 +51,23 @@ const VERTICES_LEN: usize = VERTICES.len();
 
 impl<'a> RenderContext<'a> {
     pub async fn new(
-        size: winit::dpi::PhysicalSize<u32>,
-        surface: wgpu::Surface<'a>,
-        instance: wgpu::Instance,
+        window: &'a Window,
         scene: &Scene,
     ) -> RenderContext<'a> {
+        let size = window.inner_size();
+
+        // The instance is a handle to our GPU
+        // Backends::all => Vulkan + Metal + DX12 + Browser WebGPU
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            #[cfg(not(target_arch="wasm32"))]
+            backends: wgpu::Backends::PRIMARY,
+            #[cfg(target_arch="wasm32")]
+            backends: wgpu::Backends::GL,
+            ..Default::default()
+        });
+            
+        let surface: wgpu::Surface<'_> = instance.create_surface(window).unwrap();
+
         let adapter = instance.request_adapter(
             &wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
@@ -286,12 +301,21 @@ impl<'a> RenderContext<'a> {
             }
         );
 
+        let egui_renderer = EguiRenderer::new(
+            &device,
+            config.format, 
+            None, 
+            1, 
+            window
+        );
+
         Self {
             surface,
             device,
             queue,
             config,
             size,
+            window,
             render_pipeline,
             vertex_buffer,
             image_bind_group,
@@ -301,6 +325,7 @@ impl<'a> RenderContext<'a> {
             scene_bind_group,
             scene: scene.clone(),
             latest_scene: scene.clone(),
+            egui_renderer,
         }
     }
 
@@ -314,6 +339,7 @@ impl<'a> RenderContext<'a> {
     }
 
     pub fn input(&mut self, event: &WindowEvent) -> bool {
+        self.egui_renderer.handle_input(self.window, event);
         match event {
             WindowEvent::KeyboardInput {
                 event:
@@ -403,7 +429,7 @@ impl<'a> RenderContext<'a> {
                     bytemuck::bytes_of(&self.scene.render_param),
                 );
             }
-
+    
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, &self.image_bind_group, &[]);
             render_pass.set_bind_group(1, &self.scene_bind_group, &[]);
@@ -411,6 +437,49 @@ impl<'a> RenderContext<'a> {
             render_pass.draw(0..VERTICES_LEN as u32, 0..1);
         }
     
+
+        {
+            self.egui_renderer.begin_frame(&self.window);
+
+            egui::Window::new("winit + egui + wgpu says hello!")
+                .resizable(true)
+                .vscroll(true)
+                .default_open(true)
+                .show(self.egui_renderer.context(), |ui| {
+                    ui.label("Label!");
+
+                    if ui.button("Button!").clicked() {
+                        println!("boom!")
+                    }
+
+                    ui.separator();
+                    ui.horizontal(|ui| {
+                        ui.label(format!(
+                            "Pixels per point: {}",
+                            self.egui_renderer.context().pixels_per_point()
+                        ));
+                        // if ui.button("-").clicked() {
+                        //     self.scale_factor = (self.scale_factor - 0.1).max(0.3);
+                        // }
+                        // if ui.button("+").clicked() {
+                        //     self.scale_factor = (self.scale_factor + 0.1).min(3.0);
+                        // }
+                    });
+                });
+
+            self.egui_renderer.end_frame_and_draw(
+                &self.device,
+                &self.queue,
+                &mut encoder,
+                &self.window,
+                &view,
+                ScreenDescriptor {
+                    size_in_pixels: self.size.into(),
+                    pixels_per_point: self.window.scale_factor() as f32,
+                },
+            );
+        }
+
         // submit will accept anything that implements IntoIter
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
