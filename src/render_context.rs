@@ -22,6 +22,7 @@ pub struct RenderContext<'a> {
     scene: Scene,
     latest_scene: Scene,
     pub egui_renderer: EguiRenderer,
+    pub fps: f64,
 }
 
 // const RGB_TRIANGLE: &[Vertex] = &[
@@ -326,6 +327,7 @@ impl<'a> RenderContext<'a> {
             scene: scene.clone(),
             latest_scene: scene.clone(),
             egui_renderer,
+            fps: 0.0,
         }
     }
 
@@ -435,23 +437,17 @@ impl<'a> RenderContext<'a> {
         {
             self.egui_renderer.begin_frame(&self.window);
 
-            egui::Window::new("Parameters")
-                .resizable(false)
+            egui::Window::new("")
+                // .resizable(true)
                 .vscroll(true)
                 .default_open(true)
+                .collapsible(false)
                 .show(self.egui_renderer.context(), |ui| {
                     // ui.label("Label!");
 
                     // if ui.button("Button!").clicked() {
                     //     println!("boom!")
                     // }
-
-
-                    // slider for chaning the number of samples per pixel
-                    // ui.horizontal(|ui| {
-                    //     ui.label("Samples per pixel:");
-                    //     ui.add(egui::Slider::new(&mut self.scene.render_param.samples_per_pixel, 1..=100).text("samples"));
-                    // });
 
                     // slider for changing the max samples per pixel
                     ui.horizontal(|ui| {
@@ -479,21 +475,23 @@ impl<'a> RenderContext<'a> {
 
                     ui.horizontal(|ui| {
                         ui.label("Focus distance:");
-                        ui.add(egui::Slider::new(&mut self.scene.camera.focus_distance, 0.0..=10.0).text("focus distance"));
+                        ui.add(egui::Slider::new(&mut self.scene.camera.focus_distance, 0.0..=100.0).text("focus distance"));
                     });
 
                     ui.separator();
-                    ui.horizontal(|ui| {
-                        ui.label(format!(
-                            "Total samples: {}",
-                            self.scene.render_param.total_samples
-                        ));
-                        ui.label(format!(
-                            "Max samples: {}",
-                            self.scene.render_param.samples_max_per_pixel
-                        ));
-                    });
 
+                    ui.horizontal(|ui| {
+                        ui.label(format!("Total samples: {}", self.scene.render_param.total_samples));
+                        ui.label(format!("Max samples: {}", self.scene.render_param.samples_max_per_pixel));
+                        ui.label(format!("FPS: {:.2}", self.fps));
+                    });
+                    ui.separator();
+
+                    // camera information
+                    ui.label("Camera:");
+                    ui.label(format!("Eye direction: {:?}", self.scene.camera.eye_dir));
+                    ui.label(format!("Eye position: {:?}", self.scene.camera.eye_pos));
+                    ui.label(format!("Up vector: {:?}", self.scene.camera.up));
                 });
 
             self.egui_renderer.end_frame_and_draw(

@@ -1,4 +1,4 @@
-use scene::{Camera, CameraController, Material, Scene, Sphere, Texture};
+use scene::Scene;
 #[cfg(target_arch="wasm32")]
 use wasm_bindgen::prelude::*;
 
@@ -57,6 +57,8 @@ impl ApplicationHandler<MyUserEvent> for State<'_> {
                 let now = instant::Instant::now();
                 let dt = now - self.last_time;
                 self.last_time = now;
+
+                self.render_context.fps = 1.0 / dt.as_secs_f64();
 
                 self.render_context.update(dt);
                 match self.render_context.render() {
@@ -137,80 +139,80 @@ pub async fn run() {
     let width = 900 * 2;
     let height = 450 * 2;
     let (window, event_loop) = init(width, height);
-    let scenes = Scene::new(
-        Camera {
-            eye_pos: glm::vec3(1.0, 0.0, 1.0),
-            eye_dir: glm::vec3(-1.0, 0.0, -1.0),
-            up: glm::vec3(0.0, 1.0, 0.0),
-            vfov: 45.0,
-            aperture: 0.1,
-            focus_distance: 1.0,
-        },
-        vec![
-            (
-                Sphere::new(
-                    glm::vec3(0.0, 0.0, -1.0),
-                    0.5,
-                ),
-                Material::Lambertian { 
-                    albedo: Texture::new_from_color(glm::vec3(0.1, 0.2, 0.5)),
-                }
-            ),
-            (
-                Sphere::new(
-                    glm::vec3(0.0, -100.5, -1.0),
-                    100.0,
-                ),
-                Material::Lambertian { 
-                    albedo: Texture::new_from_color(glm::vec3(0.8, 0.8, 0.0)),
-                },
-            ),
-            (
-                Sphere::new(
-                    glm::vec3(-1.0, 0.0, -1.0),
-                    0.5,
-                ),
-                Material::Metal { 
-                    albedo: Texture::new_from_color(glm::vec3(0.8, 0.6, 0.2)),
-                    fuzz: 0.0,
-                },
-            ),
-            (
-                Sphere::new(
-                    glm::vec3(1.0, 0.0, -1.0),
-                    0.5,
-                ),
-                Material::Dialectric { 
-                    ref_idx: 1.5,
-                },
-            ),
-            (
-                Sphere::new(
-                    glm::vec3(1.0, 0.0, -1.0),
-                    0.4,
-                ),
-                Material::Dialectric { 
-                    ref_idx: 1.0/1.5,
-                },
-            ),
-        ],
-        scene::RenderParam {
-            samples_per_pixel: 1,
-            max_depth: 10,
-            samples_max_per_pixel: 1000,
-            total_samples: 0,
-            clear_samples: 0,
-        },
-        scene::FrameData {
-            width,
-            height,
-            index: 0,
-        },
-        CameraController::new(
-            4.0, 
-            0.4
-        )
-    );
+    // let scenes = Scene::new(
+    //     Camera {
+    //         eye_pos: glm::vec3(1.0, 0.0, 1.0),
+    //         eye_dir: glm::vec3(-1.0, 0.0, -1.0),
+    //         up: glm::vec3(0.0, 1.0, 0.0),
+    //         vfov: 45.0,
+    //         aperture: 0.1,
+    //         focus_distance: 1.0,
+    //     },
+    //     vec![
+    //         (
+    //             Sphere::new(
+    //                 glm::vec3(0.0, 0.0, -1.0),
+    //                 0.5,
+    //             ),
+    //             Material::Lambertian { 
+    //                 albedo: Texture::new_from_color(glm::vec3(0.1, 0.2, 0.5)),
+    //             }
+    //         ),
+    //         (
+    //             Sphere::new(
+    //                 glm::vec3(0.0, -100.5, -1.0),
+    //                 100.0,
+    //             ),
+    //             Material::Lambertian { 
+    //                 albedo: Texture::new_from_color(glm::vec3(0.8, 0.8, 0.0)),
+    //             },
+    //         ),
+    //         (
+    //             Sphere::new(
+    //                 glm::vec3(-1.0, 0.0, -1.0),
+    //                 0.5,
+    //             ),
+    //             Material::Metal { 
+    //                 albedo: Texture::new_from_color(glm::vec3(0.8, 0.6, 0.2)),
+    //                 fuzz: 0.0,
+    //             },
+    //         ),
+    //         (
+    //             Sphere::new(
+    //                 glm::vec3(1.0, 0.0, -1.0),
+    //                 0.5,
+    //             ),
+    //             Material::Dialectric { 
+    //                 ref_idx: 1.5,
+    //             },
+    //         ),
+    //         (
+    //             Sphere::new(
+    //                 glm::vec3(1.0, 0.0, -1.0),
+    //                 0.4,
+    //             ),
+    //             Material::Dialectric { 
+    //                 ref_idx: 1.0/1.5,
+    //             },
+    //         ),
+    //     ],
+    //     scene::RenderParam {
+    //         samples_per_pixel: 1,
+    //         max_depth: 10,
+    //         samples_max_per_pixel: 1000,
+    //         total_samples: 0,
+    //         clear_samples: 0,
+    //     },
+    //     scene::FrameData {
+    //         width,
+    //         height,
+    //         index: 0,
+    //     },
+    //     CameraController::new(
+    //         4.0, 
+    //         0.4
+    //     )
+    // );
 
 
     let mut state = State {
@@ -219,7 +221,20 @@ pub async fn run() {
         last_time: instant::Instant::now(),
         render_context: RenderContext::new(
             &window,
-            &scenes
+            &Scene::raytracing_scene_oneweek(
+                scene::RenderParam {
+                    samples_per_pixel: 1,
+                    max_depth: 7,
+                    samples_max_per_pixel: 1000,
+                    total_samples: 0,
+                    clear_samples: 0,
+                },
+                scene::FrameData {
+                    width,
+                    height,
+                    index: 0,
+                },
+            )
         ).await,
         counter: 0,
     };
