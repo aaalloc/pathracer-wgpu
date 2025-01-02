@@ -1,6 +1,6 @@
 use egui_wgpu::ScreenDescriptor;
 use wgpu::util::DeviceExt;
-use winit::{event::{KeyEvent, WindowEvent}, keyboard::PhysicalKey, window::Window};
+use winit::{event::{DeviceEvent, WindowEvent}, window::Window};
 
 use crate::{scene::{GpuCamera, GpuMaterial, Scene}, utils::{EguiRenderer, StorageBuffer, UniformBuffer, Vertex}};
 
@@ -338,27 +338,18 @@ impl<'a> RenderContext<'a> {
         }
     }
 
-    pub fn input(&mut self, event: &WindowEvent) -> bool {
+    pub fn window_event(&mut self, event: &WindowEvent, mouse_pressed: &mut bool) {
         self.egui_renderer.handle_input(self.window, event);
-        match event {
-            WindowEvent::KeyboardInput {
-                event:
-                    KeyEvent {
-                        physical_key: PhysicalKey::Code(key),
-                        state,
-                        ..
-                    },
-                ..
-            } => {
-                self.scene.camera_controller.process_keyboard(*key, *state)
-            }
-            _ => false,
-        }
+        self.scene.camera_controller.handle_input(event, mouse_pressed);
+    }
+
+    pub fn device_event(&mut self, event: &DeviceEvent, mouse_pressed: bool) {
+        self.scene.camera_controller.handle_mouse(event, mouse_pressed);
     }
 
     pub fn update(&mut self, dt: std::time::Duration) {
         self.scene.camera_controller.update_camera(&mut self.scene.camera, dt);
-
+        self.scene.camera_controller.clear();
         if self.latest_scene != self.scene {
             let samples_per_pixel = self.latest_scene.render_param.samples_per_pixel;
             self.latest_scene = self.scene.clone();
@@ -457,7 +448,7 @@ impl<'a> RenderContext<'a> {
 
 
 
-                    
+
                     ui.separator();
                     ui.horizontal(|ui| {
                         ui.label(format!(

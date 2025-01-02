@@ -1,4 +1,4 @@
-use winit::{dpi::PhysicalPosition, event::{ElementState, MouseScrollDelta}, keyboard::KeyCode};
+use winit::{dpi::PhysicalPosition, event::{DeviceEvent, ElementState, KeyEvent, MouseButton, MouseScrollDelta, WindowEvent}, keyboard::{KeyCode, PhysicalKey}};
 use instant::Duration;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -47,6 +47,13 @@ impl CameraController {
         }
     }
     
+    pub fn clear(&mut self) {
+        self.updated = false;
+        self.rotate_horizontal = 0.0;
+        self.rotate_vertical = 0.0;
+        self.scroll = 0.0;
+    }
+
     pub fn process_keyboard(&mut self, key: KeyCode, state: ElementState) -> bool{
         let amount = if state == ElementState::Pressed { 1.0 } else { 0.0 };
         let s = match key {
@@ -95,6 +102,53 @@ impl CameraController {
             }) => *scroll as f32,
         };
     }
+
+    pub fn handle_input(&mut self, event: &WindowEvent, mouse_pressed: &mut bool) {
+        match event {
+            WindowEvent::KeyboardInput {
+                event:
+                    KeyEvent {
+                        physical_key: PhysicalKey::Code(key),
+                        state,
+                        ..
+                    },
+                ..
+            } => {
+                self.process_keyboard(*key, *state);
+            },
+            WindowEvent::MouseInput {
+                state: ElementState::Pressed,
+                button: MouseButton::Left,
+                ..
+            } => {
+                *mouse_pressed = true;
+            },
+            WindowEvent::MouseInput {
+                state: ElementState::Released,
+                button: MouseButton::Left,
+                ..
+            } => {
+                *mouse_pressed = false;
+            },
+            _ => {}
+        }
+    }
+
+    pub fn handle_mouse(&mut self, device_event: &DeviceEvent, mouse_pressed: bool) {
+        match device_event {
+            DeviceEvent::MouseMotion { delta } => {
+                if mouse_pressed {
+                    self.process_mouse(delta.0, delta.1);
+                }
+            }
+            DeviceEvent::MouseWheel { delta } => {
+                // TODO: Not behaving as expected
+                self.process_scroll(delta);
+            }
+            _ => {}
+        }
+    }
+
     pub fn update_camera(&mut self, camera: &mut Camera, dt: Duration) {
         let forward = self.amount_forward - self.amount_backward;
         let right = self.amount_right - self.amount_left;

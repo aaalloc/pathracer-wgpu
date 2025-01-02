@@ -21,6 +21,7 @@ struct State<'a> {
     window: &'a Window,
     render_context: RenderContext<'a>,
     last_time: instant::Instant,
+    mouse_pressed: bool,
     counter: i32,
 }
 
@@ -39,7 +40,7 @@ impl ApplicationHandler<MyUserEvent> for State<'_> {
         _window_id: WindowId, 
         event: WindowEvent
     ) {
-        self.render_context.input(&event);
+        self.render_context.window_event(&event, &mut self.mouse_pressed);
         match event {
             WindowEvent::CloseRequested
             | WindowEvent::KeyboardInput {
@@ -79,8 +80,8 @@ impl ApplicationHandler<MyUserEvent> for State<'_> {
         }
     }
 
-    fn device_event(&mut self, _event_loop: &ActiveEventLoop, _device_id: DeviceId, _event: DeviceEvent) {
-        // Handle device event.
+    fn device_event(&mut self, _event_loop: &ActiveEventLoop, _device_id: DeviceId, event: DeviceEvent) {
+        self.render_context.device_event(&event, self.mouse_pressed);
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
@@ -218,6 +219,7 @@ pub async fn run() {
 
     let mut state = State {
         window: &window,
+        mouse_pressed: false,
         last_time: instant::Instant::now(),
         render_context: RenderContext::new(
             &window,
