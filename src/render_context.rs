@@ -466,6 +466,23 @@ impl<'a> RenderContext<'a> {
                     });
 
                     ui.separator();
+
+                    ui.horizontal(|ui| {
+                        ui.label("Field of view:");
+                        ui.add(egui::Slider::new(&mut self.scene.camera.vfov, 0.0..=180.0).text("fov"));
+                    });
+
+                    ui.horizontal(|ui| {
+                        ui.label("Aperture:");
+                        ui.add(egui::Slider::new(&mut self.scene.camera.aperture, 0.0..=1.0).text("aperture"));
+                    });
+
+                    ui.horizontal(|ui| {
+                        ui.label("Focus distance:");
+                        ui.add(egui::Slider::new(&mut self.scene.camera.focus_distance, 0.0..=10.0).text("focus distance"));
+                    });
+
+                    ui.separator();
                     ui.horizontal(|ui| {
                         ui.label(format!(
                             "Total samples: {}",
@@ -476,6 +493,7 @@ impl<'a> RenderContext<'a> {
                             self.scene.render_param.samples_max_per_pixel
                         ));
                     });
+
                 });
 
             self.egui_renderer.end_frame_and_draw(

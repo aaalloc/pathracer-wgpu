@@ -214,7 +214,9 @@ fn get_ray(rngState: ptr<function, u32>, x: f32, y: f32) -> Ray {
     let u = f32(x + rng_next_float(rngState)) / f32(frame_data.width);
     let v = f32(y + rng_next_float(rngState)) / f32(frame_data.height);
 
-    let origin = camera.eye;
+    let rd = camera.lensRadius * random_in_unit_disk(rngState);
+
+    let origin = camera.eye + rd.x * camera.u + rd.y * camera.v;
     let direction = camera.lowerLeftCorner + u * camera.horizontal + v * camera.vertical - origin;
 
     return Ray(origin, direction);
@@ -360,6 +362,12 @@ fn random_in_unit_sphere(state: ptr<function, u32>) -> vec3<f32> {
 
     let length = sqrt(x * x + y * y + z * z);
     return vec3(x, y, z) / length;
+}
+
+fn random_in_unit_disk(state: ptr<function, u32>) -> vec2<f32> {
+    var x = rng_next_float(state);
+    var y = rng_next_float(state);
+    return vec2(2.0 * x - 1.0, 2.0 * y - 1.0);
 }
 
 fn rng_next_int(state: ptr<function, u32>) -> u32 {
