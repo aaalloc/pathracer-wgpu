@@ -349,7 +349,7 @@ impl<'a> RenderContext<'a> {
 
     pub fn update(&mut self, dt: std::time::Duration) {
         self.scene.camera_controller.update_camera(&mut self.scene.camera, dt);
-        self.scene.camera_controller.clear();
+
         if self.latest_scene != self.scene {
             let samples_per_pixel = self.latest_scene.render_param.samples_per_pixel;
             self.latest_scene = self.scene.clone();
@@ -436,18 +436,34 @@ impl<'a> RenderContext<'a> {
             self.egui_renderer.begin_frame(&self.window);
 
             egui::Window::new("Parameters")
-                .resizable(true)
+                .resizable(false)
                 .vscroll(true)
                 .default_open(true)
                 .show(self.egui_renderer.context(), |ui| {
-                    ui.label("Label!");
+                    // ui.label("Label!");
 
-                    if ui.button("Button!").clicked() {
-                        println!("boom!")
-                    }
+                    // if ui.button("Button!").clicked() {
+                    //     println!("boom!")
+                    // }
 
 
+                    // slider for chaning the number of samples per pixel
+                    // ui.horizontal(|ui| {
+                    //     ui.label("Samples per pixel:");
+                    //     ui.add(egui::Slider::new(&mut self.scene.render_param.samples_per_pixel, 1..=100).text("samples"));
+                    // });
 
+                    // slider for changing the max samples per pixel
+                    ui.horizontal(|ui| {
+                        ui.label("Max samples per pixel:");
+                        ui.add(egui::Slider::new(&mut self.scene.render_param.samples_max_per_pixel, 1..=10000).text("max samples"));
+                    });
+
+                    // slider for changing the max depth of the ray
+                    ui.horizontal(|ui| {
+                        ui.label("Max depth:");
+                        ui.add(egui::Slider::new(&mut self.scene.render_param.max_depth, 1..=100).text("depth"));
+                    });
 
                     ui.separator();
                     ui.horizontal(|ui| {

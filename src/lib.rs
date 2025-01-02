@@ -109,17 +109,13 @@ fn init(width: u32, height: u32) -> (winit::window::Window, winit::event_loop::E
     #[allow(deprecated)]
     let window = event_loop.create_window(
         WindowAttributes::default()
-    .with_title("Raytracer")
-    .with_inner_size(winit::dpi::PhysicalSize::new(width, height))
+        .with_title("Raytracer")
+        .with_inner_size(winit::dpi::PhysicalSize::new(width, height))
     ).unwrap();
     
 
     #[cfg(target_arch = "wasm32")]
     {
-        // Winit prevents sizing with CSS, so we have to set
-        // the size manually when on web.
-        use winit::dpi::PhysicalSize;
-        let _ = window.request_inner_size(PhysicalSize::new(width, height));
         
         use winit::platform::web::WindowExtWebSys;
         web_sys::window()

@@ -118,14 +118,14 @@ impl CameraController {
             },
             WindowEvent::MouseInput {
                 state: ElementState::Pressed,
-                button: MouseButton::Left,
+                button: MouseButton::Right,
                 ..
             } => {
                 *mouse_pressed = true;
             },
             WindowEvent::MouseInput {
                 state: ElementState::Released,
-                button: MouseButton::Left,
+                button: MouseButton::Right,
                 ..
             } => {
                 *mouse_pressed = false;
@@ -180,6 +180,7 @@ impl CameraController {
 
         camera.focus_distance -= scroll;
         camera.focus_distance = camera.focus_distance.max(0.1);
+        self.clear();
     }
 }
 

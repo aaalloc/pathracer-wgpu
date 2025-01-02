@@ -22,6 +22,7 @@ impl PartialEq for Scene {
         && self.spheres == other.spheres
         && self.camera == other.camera
         && self.frame_data == other.frame_data
+        && self.camera_controller == other.camera_controller
     }
 }
 
