@@ -214,7 +214,7 @@ fn get_ray(rngState: ptr<function, u32>, x: f32, y: f32) -> Ray {
     let u = f32(x + rng_next_float(rngState)) / f32(frame_data.width);
     let v = f32(y + rng_next_float(rngState)) / f32(frame_data.height);
 
-    let rd = camera.lensRadius * random_in_unit_disk(rngState);
+    let rd = camera.lensRadius * rng_in_unit_disk(rngState);
 
     let origin = camera.eye + rd.x * camera.u + rd.y * camera.v;
     let direction = camera.lowerLeftCorner + u * camera.horizontal + v * camera.vertical - origin;
@@ -258,7 +258,7 @@ fn scatter(ray: Ray, hit: HitRecord, material: Material, rngState: ptr<function,
     {
         case MAT_LAMBERTIAN: 
         {
-            let t = hit.p + hit.normal + random_on_hemisphere(rngState, hit.normal);
+            let t = hit.p + hit.normal + rng_on_hemisphere(rngState, hit.normal);
             
             if vec3_near_zero(t - hit.p) {
                 return Scatter(Ray(hit.p, hit.normal), texture_look_up(material.desc, 0.5, 0.5));
@@ -270,7 +270,7 @@ fn scatter(ray: Ray, hit: HitRecord, material: Material, rngState: ptr<function,
         {
             let reflected = reflect(normalize(ray.direction), hit.normal);
             let fuzz = material.fuzz;
-            let direction = reflected + fuzz * random_in_unit_sphere(rngState);
+            let direction = reflected + fuzz * rng_in_unit_sphere(rngState);
             return Scatter(Ray(hit.p, direction), texture_look_up(material.desc, 0.5, 0.5));
         }
         case MAT_DIELECTRIC: 
@@ -341,8 +341,8 @@ fn init_rng(pixel: vec2<u32>, resolution: vec2<u32>, frame: u32) -> u32 {
 }
 
 
-fn random_on_hemisphere(rngState: ptr<function, u32>, normal: vec3<f32>) -> vec3<f32> {
-    let on_unit_sphere = random_in_unit_sphere(rngState);
+fn rng_on_hemisphere(rngState: ptr<function, u32>, normal: vec3<f32>) -> vec3<f32> {
+    let on_unit_sphere = rng_in_unit_sphere(rngState);
     if dot(on_unit_sphere, normal) > 0.0 {
         return on_unit_sphere;
     } else {
@@ -351,7 +351,7 @@ fn random_on_hemisphere(rngState: ptr<function, u32>, normal: vec3<f32>) -> vec3
 }
 
 
-fn random_in_unit_sphere(state: ptr<function, u32>) -> vec3<f32> {
+fn rng_in_unit_sphere(state: ptr<function, u32>) -> vec3<f32> {
     // Generate three random numbers x,y,z using Gaussian distribution
     var x = rng_next_float_gauss(state);
     var y = rng_next_float_gauss(state);
@@ -364,7 +364,7 @@ fn random_in_unit_sphere(state: ptr<function, u32>) -> vec3<f32> {
     return vec3(x, y, z) / length;
 }
 
-fn random_in_unit_disk(state: ptr<function, u32>) -> vec2<f32> {
+fn rng_in_unit_disk(state: ptr<function, u32>) -> vec2<f32> {
     var x = rng_next_float(state);
     var y = rng_next_float(state);
     return vec2(2.0 * x - 1.0, 2.0 * y - 1.0);
