@@ -360,8 +360,11 @@ impl<'a> RenderContext<'a> {
         self.scene.camera_controller.update_camera(&mut self.scene.camera, dt);
 
         if self.latest_scene != self.scene {
+            let samples_per_pixel = self.latest_scene.render_param.samples_per_pixel;
             self.latest_scene = self.scene.clone();
             self.scene.render_param.total_samples = 0;
+            self.scene.render_param.samples_per_pixel = samples_per_pixel;
+            self.latest_scene.render_param.samples_per_pixel = samples_per_pixel;
         }
     }
 
@@ -441,7 +444,7 @@ impl<'a> RenderContext<'a> {
         {
             self.egui_renderer.begin_frame(&self.window);
 
-            egui::Window::new("winit + egui + wgpu says hello!")
+            egui::Window::new("Parameters")
                 .resizable(true)
                 .vscroll(true)
                 .default_open(true)
@@ -452,18 +455,19 @@ impl<'a> RenderContext<'a> {
                         println!("boom!")
                     }
 
+
+
+                    
                     ui.separator();
                     ui.horizontal(|ui| {
                         ui.label(format!(
-                            "Pixels per point: {}",
-                            self.egui_renderer.context().pixels_per_point()
+                            "Total samples: {}",
+                            self.scene.render_param.total_samples
                         ));
-                        // if ui.button("-").clicked() {
-                        //     self.scale_factor = (self.scale_factor - 0.1).max(0.3);
-                        // }
-                        // if ui.button("+").clicked() {
-                        //     self.scale_factor = (self.scale_factor + 0.1).min(3.0);
-                        // }
+                        ui.label(format!(
+                            "Max samples: {}",
+                            self.scene.render_param.samples_max_per_pixel
+                        ));
                     });
                 });
 
