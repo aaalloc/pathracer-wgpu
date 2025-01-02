@@ -469,7 +469,7 @@ impl<'a> RenderContext<'a> {
 
                     ui.horizontal(|ui| {
                         ui.label("Field of view:");
-                        ui.add(egui::Slider::new(&mut self.scene.camera.vfov, 0.0..=180.0).text("fov"));
+                        ui.add(egui::Slider::new(&mut self.scene.camera.vfov, 2.0..=179.0).text("fov"));
                     });
 
                     ui.horizontal(|ui| {
