@@ -1,7 +1,7 @@
-mod gpu_buffer;
 mod egui_tools;
-pub use gpu_buffer::{StorageBuffer, UniformBuffer};
+mod gpu_buffer;
 pub use egui_tools::EguiRenderer;
+pub use gpu_buffer::{StorageBuffer, UniformBuffer};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]

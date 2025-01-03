@@ -1,5 +1,9 @@
-use winit::{dpi::PhysicalPosition, event::{DeviceEvent, ElementState, KeyEvent, MouseButton, MouseScrollDelta, WindowEvent}, keyboard::{KeyCode, PhysicalKey}};
 use instant::Duration;
+use winit::{
+    dpi::PhysicalPosition,
+    event::{DeviceEvent, ElementState, KeyEvent, MouseButton, MouseScrollDelta, WindowEvent},
+    keyboard::{KeyCode, PhysicalKey},
+};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Camera {
@@ -46,7 +50,7 @@ impl CameraController {
             sensitivity,
         }
     }
-    
+
     pub fn clear(&mut self) {
         self.updated = false;
         self.rotate_horizontal = 0.0;
@@ -54,8 +58,12 @@ impl CameraController {
         self.scroll = 0.0;
     }
 
-    pub fn process_keyboard(&mut self, key: KeyCode, state: ElementState) -> bool{
-        let amount = if state == ElementState::Pressed { 1.0 } else { 0.0 };
+    pub fn process_keyboard(&mut self, key: KeyCode, state: ElementState) -> bool {
+        let amount = if state == ElementState::Pressed {
+            1.0
+        } else {
+            0.0
+        };
         let s = match key {
             KeyCode::KeyW | KeyCode::ArrowUp => {
                 self.amount_forward = amount;
@@ -96,10 +104,7 @@ impl CameraController {
         self.scroll = -match delta {
             // I'm assuming a line is about 100 pixels
             MouseScrollDelta::LineDelta(_, scroll) => scroll * 100.0,
-            MouseScrollDelta::PixelDelta(PhysicalPosition {
-                y: scroll,
-                ..
-            }) => *scroll as f32,
+            MouseScrollDelta::PixelDelta(PhysicalPosition { y: scroll, .. }) => *scroll as f32,
         };
     }
 
@@ -115,21 +120,21 @@ impl CameraController {
                 ..
             } => {
                 self.process_keyboard(*key, *state);
-            },
+            }
             WindowEvent::MouseInput {
                 state: ElementState::Pressed,
                 button: MouseButton::Right,
                 ..
             } => {
                 *mouse_pressed = true;
-            },
+            }
             WindowEvent::MouseInput {
                 state: ElementState::Released,
                 button: MouseButton::Right,
                 ..
             } => {
                 *mouse_pressed = false;
-            },
+            }
             _ => {}
         }
     }
@@ -172,10 +177,13 @@ impl CameraController {
         let right = glm::cross(&camera.eye_dir, &camera.up) * right;
         let up = camera.up * up;
 
-
         camera.eye_pos += forward + right + up;
         camera.eye_dir = glm::rotate_vec3(&camera.eye_dir, rotate_horizontal, &camera.up);
-        camera.eye_dir = glm::rotate_vec3(&camera.eye_dir, rotate_vertical, &glm::cross(&camera.eye_dir, &camera.up));
+        camera.eye_dir = glm::rotate_vec3(
+            &camera.eye_dir,
+            rotate_vertical,
+            &glm::cross(&camera.eye_dir, &camera.up),
+        );
         camera.eye_dir = glm::normalize(&camera.eye_dir);
 
         camera.focus_distance -= scroll;

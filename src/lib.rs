@@ -1,9 +1,13 @@
 use scene::Scene;
-#[cfg(target_arch="wasm32")]
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
 use winit::{
-    application::ApplicationHandler, event::*, event_loop::{ActiveEventLoop, EventLoop}, keyboard::{KeyCode, PhysicalKey}, window::{Window, WindowAttributes, WindowId}
+    application::ApplicationHandler,
+    event::*,
+    event_loop::{ActiveEventLoop, EventLoop},
+    keyboard::{KeyCode, PhysicalKey},
+    window::{Window, WindowAttributes, WindowId},
 };
 
 mod render_context;
@@ -14,7 +18,6 @@ mod utils;
 mod scene;
 extern crate nalgebra_glm as glm;
 
-
 struct MyUserEvent;
 
 struct State<'a> {
@@ -22,6 +25,7 @@ struct State<'a> {
     render_context: RenderContext<'a>,
     last_time: instant::Instant,
     mouse_pressed: bool,
+    surface_configured: bool,
     counter: i32,
 }
 
@@ -35,12 +39,13 @@ impl ApplicationHandler<MyUserEvent> for State<'_> {
     }
 
     fn window_event(
-        &mut self, 
-        event_loop: &ActiveEventLoop, 
-        _window_id: WindowId, 
-        event: WindowEvent
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        _window_id: WindowId,
+        event: WindowEvent,
     ) {
-        self.render_context.window_event(&event, &mut self.mouse_pressed);
+        self.render_context
+            .window_event(&event, &mut self.mouse_pressed);
         match event {
             WindowEvent::CloseRequested
             | WindowEvent::KeyboardInput {
@@ -54,6 +59,10 @@ impl ApplicationHandler<MyUserEvent> for State<'_> {
             } => event_loop.exit(),
             WindowEvent::RedrawRequested => {
                 self.window.request_redraw();
+                if !self.surface_configured {
+                    log::info!("Surface not configured yet");
+                    return;
+                }
                 let now = instant::Instant::now();
                 let dt = now - self.last_time;
                 self.last_time = now;
@@ -62,9 +71,10 @@ impl ApplicationHandler<MyUserEvent> for State<'_> {
 
                 self.render_context.update(dt);
                 match self.render_context.render() {
-                    Ok(_) => {},
-                    Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated)
-                        =>  self.render_context.resize( self.render_context.size),
+                    Ok(_) => {}
+                    Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
+                        self.render_context.resize(self.render_context.size)
+                    }
                     Err(wgpu::SurfaceError::OutOfMemory) => {
                         log::error!("Out of memory");
                         event_loop.exit();
@@ -74,15 +84,21 @@ impl ApplicationHandler<MyUserEvent> for State<'_> {
                         log::warn!("Surface timeout")
                     }
                 }
-            },
+            }
             WindowEvent::Resized(physical_size) => {
+                self.surface_configured = true;
                 self.render_context.resize(physical_size);
-            },
+            }
             _ => {}
         }
     }
 
-    fn device_event(&mut self, _event_loop: &ActiveEventLoop, _device_id: DeviceId, event: DeviceEvent) {
+    fn device_event(
+        &mut self,
+        _event_loop: &ActiveEventLoop,
+        _device_id: DeviceId,
+        event: DeviceEvent,
+    ) {
         self.render_context.device_event(&event, self.mouse_pressed);
     }
 
@@ -92,7 +108,13 @@ impl ApplicationHandler<MyUserEvent> for State<'_> {
     }
 }
 
-fn init(width: u32, height: u32) -> (winit::window::Window, winit::event_loop::EventLoop<MyUserEvent>) {
+fn init(
+    width: u32,
+    height: u32,
+) -> (
+    winit::window::Window,
+    winit::event_loop::EventLoop<MyUserEvent>,
+) {
     cfg_if::cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
             std::panic::set_hook(Box::new(console_error_panic_hook::hook));
@@ -101,24 +123,21 @@ fn init(width: u32, height: u32) -> (winit::window::Window, winit::event_loop::E
             env_logger::init();
         }
     }
-     
+
     log::info!("Starting up");
-    
-    
-    
-    
+
     let event_loop = EventLoop::<MyUserEvent>::with_user_event().build().unwrap();
     #[allow(deprecated)]
-    let window = event_loop.create_window(
-        WindowAttributes::default()
-        .with_title("Raytracer")
-        .with_inner_size(winit::dpi::PhysicalSize::new(width, height))
-    ).unwrap();
-    
+    let window = event_loop
+        .create_window(
+            WindowAttributes::default()
+                .with_title("Raytracer")
+                .with_inner_size(winit::dpi::PhysicalSize::new(width, height)),
+        )
+        .unwrap();
 
     #[cfg(target_arch = "wasm32")]
     {
-        
         use winit::platform::web::WindowExtWebSys;
         web_sys::window()
             .and_then(|win| win.document())
@@ -131,11 +150,11 @@ fn init(width: u32, height: u32) -> (winit::window::Window, winit::event_loop::E
             .expect("Couldn't append canvas to document body.");
     }
 
-    return (window, event_loop)
+    return (window, event_loop);
 }
 
-#[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]
-pub async fn run() {    
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
+pub async fn run() {
     let width = 900 * 2;
     let height = 450 * 2;
     let (window, event_loop) = init(width, height);
@@ -154,7 +173,7 @@ pub async fn run() {
     //                 glm::vec3(0.0, 0.0, -1.0),
     //                 0.5,
     //             ),
-    //             Material::Lambertian { 
+    //             Material::Lambertian {
     //                 albedo: Texture::new_from_color(glm::vec3(0.1, 0.2, 0.5)),
     //             }
     //         ),
@@ -163,7 +182,7 @@ pub async fn run() {
     //                 glm::vec3(0.0, -100.5, -1.0),
     //                 100.0,
     //             ),
-    //             Material::Lambertian { 
+    //             Material::Lambertian {
     //                 albedo: Texture::new_from_color(glm::vec3(0.8, 0.8, 0.0)),
     //             },
     //         ),
@@ -172,7 +191,7 @@ pub async fn run() {
     //                 glm::vec3(-1.0, 0.0, -1.0),
     //                 0.5,
     //             ),
-    //             Material::Metal { 
+    //             Material::Metal {
     //                 albedo: Texture::new_from_color(glm::vec3(0.8, 0.6, 0.2)),
     //                 fuzz: 0.0,
     //             },
@@ -182,7 +201,7 @@ pub async fn run() {
     //                 glm::vec3(1.0, 0.0, -1.0),
     //                 0.5,
     //             ),
-    //             Material::Dialectric { 
+    //             Material::Dialectric {
     //                 ref_idx: 1.5,
     //             },
     //         ),
@@ -191,7 +210,7 @@ pub async fn run() {
     //                 glm::vec3(1.0, 0.0, -1.0),
     //                 0.4,
     //             ),
-    //             Material::Dialectric { 
+    //             Material::Dialectric {
     //                 ref_idx: 1.0/1.5,
     //             },
     //         ),
@@ -209,15 +228,15 @@ pub async fn run() {
     //         index: 0,
     //     },
     //     CameraController::new(
-    //         4.0, 
+    //         4.0,
     //         0.4
     //     )
     // );
 
-
     let mut state = State {
         window: &window,
         mouse_pressed: false,
+        surface_configured: false,
         last_time: instant::Instant::now(),
         render_context: RenderContext::new(
             &window,
@@ -234,10 +253,11 @@ pub async fn run() {
                     height,
                     index: 0,
                 },
-            )
-        ).await,
+            ),
+        )
+        .await,
         counter: 0,
     };
-    
+
     let _ = event_loop.run_app(&mut state);
 }
