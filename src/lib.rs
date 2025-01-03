@@ -155,83 +155,10 @@ fn init(
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub async fn run() {
-    let width = 900 * 2;
-    let height = 450 * 2;
+    let scale = 2.0;
+    let width = 900 * scale as u32;
+    let height = 450 * scale as u32;
     let (window, event_loop) = init(width, height);
-    // let scenes = Scene::new(
-    //     Camera {
-    //         eye_pos: glm::vec3(1.0, 0.0, 1.0),
-    //         eye_dir: glm::vec3(-1.0, 0.0, -1.0),
-    //         up: glm::vec3(0.0, 1.0, 0.0),
-    //         vfov: 45.0,
-    //         aperture: 0.1,
-    //         focus_distance: 1.0,
-    //     },
-    //     vec![
-    //         (
-    //             Sphere::new(
-    //                 glm::vec3(0.0, 0.0, -1.0),
-    //                 0.5,
-    //             ),
-    //             Material::Lambertian {
-    //                 albedo: Texture::new_from_color(glm::vec3(0.1, 0.2, 0.5)),
-    //             }
-    //         ),
-    //         (
-    //             Sphere::new(
-    //                 glm::vec3(0.0, -100.5, -1.0),
-    //                 100.0,
-    //             ),
-    //             Material::Lambertian {
-    //                 albedo: Texture::new_from_color(glm::vec3(0.8, 0.8, 0.0)),
-    //             },
-    //         ),
-    //         (
-    //             Sphere::new(
-    //                 glm::vec3(-1.0, 0.0, -1.0),
-    //                 0.5,
-    //             ),
-    //             Material::Metal {
-    //                 albedo: Texture::new_from_color(glm::vec3(0.8, 0.6, 0.2)),
-    //                 fuzz: 0.0,
-    //             },
-    //         ),
-    //         (
-    //             Sphere::new(
-    //                 glm::vec3(1.0, 0.0, -1.0),
-    //                 0.5,
-    //             ),
-    //             Material::Dialectric {
-    //                 ref_idx: 1.5,
-    //             },
-    //         ),
-    //         (
-    //             Sphere::new(
-    //                 glm::vec3(1.0, 0.0, -1.0),
-    //                 0.4,
-    //             ),
-    //             Material::Dialectric {
-    //                 ref_idx: 1.0/1.5,
-    //             },
-    //         ),
-    //     ],
-    //     scene::RenderParam {
-    //         samples_per_pixel: 1,
-    //         max_depth: 10,
-    //         samples_max_per_pixel: 1000,
-    //         total_samples: 0,
-    //         clear_samples: 0,
-    //     },
-    //     scene::FrameData {
-    //         width,
-    //         height,
-    //         index: 0,
-    //     },
-    //     CameraController::new(
-    //         4.0,
-    //         0.4
-    //     )
-    // );
 
     let mut state = State {
         window: &window,

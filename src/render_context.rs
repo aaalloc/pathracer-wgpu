@@ -423,11 +423,11 @@ impl<'a> RenderContext<'a> {
         {
             self.egui_renderer.begin_frame(&self.window);
 
-            egui::Window::new("")
+            egui::Window::new("Params")
                 // .resizable(true)
                 .vscroll(true)
-                .default_open(true)
-                .collapsible(false)
+                .default_open(false)
+                .collapsible(true)
                 .show(self.egui_renderer.context(), |ui| {
                     // ui.label("Label!");
 
