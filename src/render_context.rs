@@ -57,18 +57,25 @@ const VERTICES_LEN: usize = VERTICES.len();
 
 impl<'a> RenderContext<'a> {
     pub async fn new(window: &'a Window, scene: &Scene) -> RenderContext<'a> {
-        let size = window.inner_size();
+        let size;
+        cfg_if::cfg_if! {
+            if #[cfg(target_arch = "wasm32")] {
+                use winit::platform::web::WindowExtWebSys;
+                let canvas = window.canvas().unwrap();
+                size = winit::dpi::PhysicalSize::new(canvas.client_width() as u32, canvas.client_height() as u32);
+            } else {
+                size = window.inner_size();
+            }
+        }
 
         // The instance is a handle to our GPU
         // Backends::all => Vulkan + Metal + DX12 + Browser WebGPU
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            #[cfg(not(target_arch = "wasm32"))]
-            backends: wgpu::Backends::PRIMARY,
-            #[cfg(target_arch = "wasm32")]
-            backends: wgpu::Backends::GL,
+            backends: wgpu::util::backend_bits_from_env().unwrap_or_else(wgpu::Backends::all),
             ..Default::default()
         });
 
+        log::debug!("Instance: {:?}", instance);
         let surface: wgpu::Surface<'_> = instance.create_surface(window).unwrap();
 
         let adapter = instance
@@ -80,6 +87,7 @@ impl<'a> RenderContext<'a> {
             .await
             .unwrap();
 
+        log::debug!("Adapter: {:?}", adapter.get_info());
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
@@ -87,20 +95,21 @@ impl<'a> RenderContext<'a> {
                     // WebGL doesn't support all of wgpu's features, so if
                     // we're building for the web, we'll have to disable some.
                     required_limits: if cfg!(target_arch = "wasm32") {
-                        wgpu::Limits::downlevel_defaults()
+                        wgpu::Limits::default().using_resolution(adapter.limits())
                     } else {
                         wgpu::Limits {
                             max_storage_buffer_binding_size: 512_u32 << 20,
                             ..Default::default()
                         }
                     },
-                    label: None,
+                    label: Some("Device"),
                     memory_hints: Default::default(),
                 },
                 None,
             )
             .await
             .unwrap();
+        log::debug!("Device: {:?}", device);
 
         let camera_buffer = {
             let camera = GpuCamera::new(&scene.camera, (size.width, size.height));
@@ -199,12 +208,16 @@ impl<'a> RenderContext<'a> {
         // Shader code in this tutorial assumes an sRGB surface texture. Using a different
         // one will result in all the colors coming out darker. If you want to support non
         // sRGB surfaces, you'll need to account for that when drawing to the frame.
+        // if rgb = "fs_main" else "fs_main_srgb"
+
         let surface_format = surface_caps
             .formats
             .iter()
             .find(|f| f.is_srgb())
             .copied()
             .unwrap_or(surface_caps.formats[0]);
+
+        log::debug!("Surface format: {:?}", surface_format);
 
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -257,7 +270,11 @@ impl<'a> RenderContext<'a> {
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
-                entry_point: Some("fs_main"),
+                entry_point: match surface_format.is_srgb() {
+                    true => Some("fs_main_srgb"),
+                    // for webgpu
+                    false => Some("fs_main_rgb"),
+                },
                 targets: &[Some(wgpu::ColorTargetState {
                     format: config.format,
                     blend: Some(wgpu::BlendState::REPLACE),
@@ -354,14 +371,24 @@ impl<'a> RenderContext<'a> {
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
-        let view = output
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
+
+        let view = output.texture.create_view(&wgpu::TextureViewDescriptor {
+            label: Some("View"),
+            format: Some(self.config.format),
+            dimension: Some(wgpu::TextureViewDimension::D2),
+            aspect: wgpu::TextureAspect::All,
+            base_mip_level: 0,
+            mip_level_count: None,
+            base_array_layer: 0,
+            array_layer_count: None,
+        });
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Encoder"),
             });
+
+        encoder.insert_debug_marker("Render Pass");
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -384,40 +411,36 @@ impl<'a> RenderContext<'a> {
                 timestamp_writes: None,
             });
 
-            {
-                let camera =
-                    GpuCamera::new(&self.scene.camera, (self.size.width, self.size.height));
-
-                self.queue.write_buffer(
-                    &self.camera_buffer.handle(),
-                    0,
-                    bytemuck::bytes_of(&camera),
-                );
-
-                self.scene.frame_data.width = self.size.width;
-                self.scene.frame_data.height = self.size.height;
-                self.scene.frame_data.index += 1;
-
-                self.queue.write_buffer(
-                    &self.frame_data_buffer.handle(),
-                    0,
-                    bytemuck::bytes_of(&self.scene.frame_data),
-                );
-
-                self.scene.render_param.update();
-
-                self.queue.write_buffer(
-                    &self.render_param_buffer.handle(),
-                    0,
-                    bytemuck::bytes_of(&self.scene.render_param),
-                );
-            }
-
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, &self.image_bind_group, &[]);
             render_pass.set_bind_group(1, &self.scene_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.draw(0..VERTICES_LEN as u32, 0..1);
+        }
+
+        {
+            let camera = GpuCamera::new(&self.scene.camera, (self.size.width, self.size.height));
+
+            self.queue
+                .write_buffer(&self.camera_buffer.handle(), 0, bytemuck::bytes_of(&camera));
+
+            self.scene.frame_data.width = self.size.width;
+            self.scene.frame_data.height = self.size.height;
+            self.scene.frame_data.index += 1;
+
+            self.queue.write_buffer(
+                &self.frame_data_buffer.handle(),
+                0,
+                bytemuck::bytes_of(&self.scene.frame_data),
+            );
+
+            self.scene.render_param.update();
+
+            self.queue.write_buffer(
+                &self.render_param_buffer.handle(),
+                0,
+                bytemuck::bytes_of(&self.scene.render_param),
+            );
         }
 
         {

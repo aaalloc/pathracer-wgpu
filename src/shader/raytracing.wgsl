@@ -36,8 +36,28 @@ fn vs_main(
     );
 }
 
+fn apply_transfer_function(x: f32) -> u32 {
+    let a = 0.055;
+    var y: f32;
+    if x > 0.0031308 {
+        y = (1.0 + a) * pow(x, 1.0 / 2.4) - a;
+    } else {
+        y = 12.92 * x;
+    }
+    return u32(round(y * 255.0));
+}
+fn from_linear_rgb(c: vec3<f32>) -> vec3<f32> {
+
+    let r = apply_transfer_function(c.x);
+    let g = apply_transfer_function(c.y);
+    let b = apply_transfer_function(c.z);
+
+    return vec3<f32>(f32(r), f32(g), f32(b)) / 255.0;
+}
+
+// for webgpu
 @fragment
-fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+fn fs_main_rgb(in: VertexOutput) -> @location(0) vec4<f32> {
     let u = in.tex_coords.x;
     let v = in.tex_coords.y;
 
@@ -46,7 +66,43 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let i = y * frame_data.width + x;
 
     var rngState: u32 = init_rng(
-        vec2<u32>(u32(x), u32(y)), 
+        vec2<u32>(u32(x), u32(y)),
+        vec2<u32>(frame_data.width, frame_data.height),
+        frame_data.frame_idx
+    );
+
+    var pixel = vec3(image_buffer[i][0], image_buffer[i][1], image_buffer[i][2]);
+
+    if render_param.clear_samples == 1u {
+        pixel = vec3(0.0);
+    }
+
+    var rgb = sample_pixel(&rngState, f32(x), f32(y));
+    rgb = from_linear_rgb(rgb);
+
+    pixel += rgb;
+    image_buffer[i] = array<f32, 3>(pixel.r, pixel.g, pixel.b);
+
+    return vec4<f32>(
+        pixel / f32(render_param.total_samples),
+        1.0
+    );
+
+    // var noiseState: u32 = init_rng(vec2<u32>(u32(u), u32(v)), vec2<u32>(512u, 512u), 0u);
+    // return vec4<f32>(rng_next_float(&rngState), rng_next_float(&rngState), rng_next_float(&rngState), 1.0);
+}
+
+@fragment
+fn fs_main_srgb(in: VertexOutput) -> @location(0) vec4<f32> {
+    let u = in.tex_coords.x;
+    let v = in.tex_coords.y;
+
+    let x = u32(u * f32(frame_data.width));
+    let y = u32(v * f32(frame_data.height));
+    let i = y * frame_data.width + x;
+
+    var rngState: u32 = init_rng(
+        vec2<u32>(u32(x), u32(y)),
         vec2<u32>(frame_data.width, frame_data.height),
         frame_data.frame_idx
     );
@@ -149,7 +205,7 @@ fn hit_sphere(
     let b = dot(ray.direction, oc);
     let c = dot(oc, oc) - sphere.radius * sphere.radius;
     let discriminant = b * b - a * c;
-    
+
     if discriminant < 0.0 {
         return false;
     }
@@ -157,8 +213,7 @@ fn hit_sphere(
     let sqrtd = sqrt(discriminant);
 
     var root = (-b - sqrtd) / a;
-    if root < ray_min || root > ray_max 
-    {
+    if root < ray_min || root > ray_max {
         root = (-b + sqrtd) / a;
         if root < ray_min || root > ray_max {
             return false;
@@ -187,10 +242,8 @@ fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool 
     var hit_anything = false;
     var tmp_rec = HitRecord();
 
-    for (var i = 0u; i < arrayLength(&spheres); i += 1u) 
-    {
-        if hit_sphere(i, ray, MIN_T, closest_so_far, &tmp_rec) 
-        {
+    for (var i = 0u; i < arrayLength(&spheres); i += 1u) {
+        if hit_sphere(i, ray, MIN_T, closest_so_far, &tmp_rec) {
             hit_anything = true;
             closest_so_far = tmp_rec.t;
             *intersection = tmp_rec;
@@ -202,8 +255,7 @@ fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool 
 
 fn sample_pixel(rngState: ptr<function, u32>, x: f32, y: f32) -> vec3<f32> {
     var color = vec3(0.0);
-    for (var i = 0u; i < render_param.samples_per_pixel; i += 1u) 
-    {
+    for (var i = 0u; i < render_param.samples_per_pixel; i += 1u) {
         let ray = get_ray(rngState, x, y);
         color += ray_color(ray, rngState);
     }
@@ -224,23 +276,35 @@ fn get_ray(rngState: ptr<function, u32>, x: f32, y: f32) -> Ray {
 
 
 
+// pub fn from_linear_rgb(c: [f32; 3]) -> Color {
+//     let f = |x: f32| -> u32 {
+//         let y = if x > 0.0031308 {
+//             let a = 0.055;
+//             (1.0 + a) * x.powf(-2.4) - a
+//         } else {
+//             12.92 * x
+//         };
+//         (y * 255.0).round() as u32
+//     };
+//     f(c[0]) << 16 | f(c[1]) << 8 | f(c[2])
+// }
+
+
+
+
 fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
     var ray = first_ray;
     var sky_color = vec3(0.0);
     var color = vec3(1.0);
 
-    for (var i = 0u; i < render_param.max_depth; i += 1u)
-    {
+    for (var i = 0u; i < render_param.max_depth; i += 1u) {
         var intersection = HitRecord();
-        if check_intersection(ray, &intersection)
-        {
+        if check_intersection(ray, &intersection) {
             let material = materials[intersection.material_index];
             let scattered = scatter(ray, intersection, material, rngState);
             color *= scattered.attenuation;
             ray = scattered.ray;
-        } 
-        else 
-        {
+        } else {
             let direction = normalize(ray.direction);
             let a = 0.5 * (direction.y + 1.0);
             var sky = (1.0 - a) * vec3<f32>(1.0, 1.0, 1.0) + a * vec3<f32>(0.5, 0.7, 1);
@@ -259,7 +323,7 @@ fn scatter(ray: Ray, hit: HitRecord, material: Material, rngState: ptr<function,
         case MAT_LAMBERTIAN: 
         {
             let t = hit.p + hit.normal + rng_on_hemisphere(rngState, hit.normal);
-            
+
             if vec3_near_zero(t - hit.p) {
                 return Scatter(Ray(hit.p, hit.normal), texture_look_up(material.desc, 0.5, 0.5));
             }

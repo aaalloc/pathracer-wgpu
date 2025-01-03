@@ -64,10 +64,12 @@ impl UniformBuffer {
     }
 
     pub fn binding(&self) -> wgpu::BindGroupEntry<'_> {
-        wgpu::BindGroupEntry {
+        let e = wgpu::BindGroupEntry {
             binding: self.binding_idx,
             resource: self.handle.as_entire_binding(),
-        }
+        };
+        log::debug!("{:?}", e);
+        e
     }
 }
 
@@ -118,9 +120,11 @@ impl StorageBuffer {
     }
 
     pub fn binding(&self) -> wgpu::BindGroupEntry<'_> {
-        wgpu::BindGroupEntry {
+        let e = wgpu::BindGroupEntry {
             binding: self.binding_idx,
             resource: self.handle.as_entire_binding(),
-        }
+        };
+        log::debug!("{:?}", e);
+        e
     }
 }

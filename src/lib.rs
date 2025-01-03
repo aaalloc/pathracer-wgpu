@@ -1,3 +1,4 @@
+use log::info;
 use scene::Scene;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -118,7 +119,7 @@ fn init(
     cfg_if::cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
             std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-            console_log::init_with_level(log::Level::Warn).expect("Couldn't initialize logger");
+            console_log::init_with_level(log::Level::Debug).expect("Couldn't initialize logger");
         } else {
             env_logger::init();
         }
@@ -127,35 +128,34 @@ fn init(
     log::info!("Starting up");
 
     let event_loop = EventLoop::<MyUserEvent>::with_user_event().build().unwrap();
-    #[allow(deprecated)]
-    let window = event_loop
-        .create_window(
-            WindowAttributes::default()
-                .with_title("Raytracer")
-                .with_inner_size(winit::dpi::PhysicalSize::new(width, height)),
-        )
-        .unwrap();
+    #[allow(unused_mut)]
+    let mut attributes =
+        WindowAttributes::default().with_inner_size(winit::dpi::PhysicalSize::new(width, height));
 
     #[cfg(target_arch = "wasm32")]
     {
-        use winit::platform::web::WindowExtWebSys;
-        web_sys::window()
-            .and_then(|win| win.document())
-            .and_then(|doc| {
-                let dst = doc.get_element_by_id("wasm-example")?;
-                let canvas = web_sys::Element::from(window.canvas()?);
-                dst.append_child(&canvas).ok()?;
-                Some(())
-            })
-            .expect("Couldn't append canvas to document body.");
+        use winit::platform::web::WindowAttributesExtWebSys;
+        let canvas = wgpu::web_sys::window()
+            .unwrap()
+            .document()
+            .unwrap()
+            .get_element_by_id("pathracer-canvas")
+            .unwrap()
+            .dyn_into::<web_sys::HtmlCanvasElement>()
+            .unwrap();
+        attributes = attributes.with_canvas(Some(canvas));
     }
+
+    #[allow(deprecated)]
+    let window = event_loop.create_window(attributes).unwrap();
 
     return (window, event_loop);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub async fn run() {
-    let scale = 2.0;
+    info!("Starting up");
+    let scale = 1.0;
     let width = 900 * scale as u32;
     let height = 450 * scale as u32;
     let (window, event_loop) = init(width, height);

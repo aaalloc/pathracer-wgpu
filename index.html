@@ -12,12 +12,16 @@
 </head>
 
 <body id="wasm-example">
-  <script type="module">
+<link data-trunk rel="rust" href="Cargo.toml" 
+data-target-name="pathracer-wgpu" />
+
+  <!-- <script type="module">
       import init from "./pkg/pathracer_wgpu.js";
       init().then(() => {
           console.log("WASM Loaded");
       });
-  </script>
+  </script> -->
+  <canvas id="pathracer-canvas"></canvas>
 </body>
 
 </html>
