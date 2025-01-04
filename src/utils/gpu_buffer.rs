@@ -5,6 +5,7 @@ use wgpu::util::DeviceExt;
 pub struct UniformBuffer {
     handle: wgpu::Buffer,
     binding_idx: u32,
+    label: String,
 }
 
 impl UniformBuffer {
@@ -25,6 +26,7 @@ impl UniformBuffer {
         Self {
             handle,
             binding_idx,
+            label: String::from(label.unwrap_or("")),
         }
     }
 
@@ -43,6 +45,7 @@ impl UniformBuffer {
         Self {
             handle,
             binding_idx,
+            label: String::from(label.unwrap_or("")),
         }
     }
 
@@ -68,7 +71,7 @@ impl UniformBuffer {
             binding: self.binding_idx,
             resource: self.handle.as_entire_binding(),
         };
-        log::debug!("{:?}", e);
+        log::debug!("{}: {:?}", self.label, e);
         e
     }
 }
@@ -76,6 +79,7 @@ impl UniformBuffer {
 pub struct StorageBuffer {
     handle: wgpu::Buffer,
     binding_idx: u32,
+    label: String,
 }
 
 impl StorageBuffer {
@@ -94,6 +98,7 @@ impl StorageBuffer {
         Self {
             handle,
             binding_idx,
+            label: String::from(label.unwrap_or("")),
         }
     }
 
@@ -124,7 +129,7 @@ impl StorageBuffer {
             binding: self.binding_idx,
             resource: self.handle.as_entire_binding(),
         };
-        log::debug!("{:?}", e);
+        log::debug!("{}: {:?}", self.label, e);
         e
     }
 }

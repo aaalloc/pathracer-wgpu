@@ -1,6 +1,9 @@
 mod sphere;
 pub use sphere::Sphere;
 
+mod mesh;
+pub use mesh::Mesh;
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable, PartialEq)]
 pub struct Object {
@@ -10,19 +13,14 @@ pub struct Object {
 
 impl Object {
     pub fn new(id: u32, obj_type: ObjectType) -> Self {
-        match obj_type {
-            ObjectType::Sphere => Self {
-                id,
-                obj_type: ObjectType::Sphere as u32,
-            },
-            ObjectType::Mesh => Self {
-                id,
-                obj_type: ObjectType::Mesh as u32,
-            },
+        Object {
+            id,
+            obj_type: obj_type as u32,
         }
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone, PartialEq, Debug)]
 pub enum ObjectType {
     Sphere = 0,

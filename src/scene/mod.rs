@@ -4,13 +4,14 @@ pub use camera::{Camera, CameraController, GpuCamera};
 mod material;
 pub use material::{GpuMaterial, Material, Texture};
 
-use crate::object::{self, Object, Sphere};
+use crate::object::{self, Mesh, Object, ObjectType, Sphere};
 
 #[derive(Clone, Debug)]
 pub struct Scene {
     pub materials: Vec<Material>,
     pub objects: Vec<Object>,
     pub spheres: Vec<Sphere>,
+    pub meshes: Vec<Mesh>,
     pub camera: Camera,
     pub camera_controller: CameraController,
     pub render_param: RenderParam,
@@ -28,6 +29,7 @@ impl PartialEq for Scene {
 }
 
 impl Scene {
+    #[allow(dead_code)]
     pub fn raytracing_scene_oneweek(render_param: RenderParam, frame_data: FrameData) -> Self {
         let mut spheres = Vec::new();
         let mut materials = Vec::new();
@@ -97,7 +99,7 @@ impl Scene {
             focus_distance: 10.0,
         };
 
-        let objects = spheres
+        let objects: Vec<Object> = spheres
             .iter()
             .enumerate()
             .map(|(i, _)| Object::new(i as u32, object::ObjectType::Sphere))
@@ -106,6 +108,7 @@ impl Scene {
         Self {
             objects,
             camera,
+            meshes: vec![Mesh::empty()],
             materials,
             spheres,
             render_param,
@@ -114,34 +117,45 @@ impl Scene {
         }
     }
 
-    // #[allow(dead_code)]
-    // pub fn new(
-    //     camera: Camera,
-    //     spheres: Vec<(Sphere, Material)>,
-    //     render_param: RenderParam,
-    //     frame_data: FrameData,
-    //     camera_controller: CameraController,
-    // ) -> Self {
-    //     let mut materials = Vec::new();
-    //     let mut s = Vec::new();
+    pub fn teapot_scene(render_param: RenderParam, frame_data: FrameData) -> Self {
+        let mut materials = Vec::new();
+        let mut objects = Vec::new();
 
-    //     for (sphere, material) in spheres {
-    //         materials.push(material);
-    //         s.push(Sphere {
-    //             material_idx: materials.len() as u32 - 1,
-    //             ..sphere
-    //         });
-    //     }
+        let ground_material = Material::Lambertian {
+            albedo: Texture::new_from_color(glm::vec3(0.5, 0.5, 0.5)),
+        };
 
-    //     Self {
-    //         camera,
-    //         materials,
-    //         spheres: s,
-    //         render_param,
-    //         frame_data,
-    //         camera_controller,
-    //     }
-    // }
+        materials.push(ground_material);
+
+        let path_str = "mesh/teapot.obj";
+        let options = tobj::LoadOptions {
+            ..Default::default()
+        };
+        let s = tobj::load_obj(path_str, &options).unwrap().0[0].clone();
+
+        let meshes = Mesh::from_tobj(s);
+        objects.push(Object::new(0, ObjectType::Mesh));
+
+        let camera = Camera {
+            eye_pos: glm::vec3(0.0, 0.0, 5.0),
+            eye_dir: glm::vec3(0.0, 0.0, -1.0),
+            up: glm::vec3(0.0, 1.0, 0.0),
+            vfov: 45.0,
+            aperture: 0.0,
+            focus_distance: 1.0,
+        };
+
+        Self {
+            objects,
+            camera,
+            meshes,
+            materials,
+            spheres: vec![Sphere::empty()],
+            render_param,
+            frame_data,
+            camera_controller: CameraController::new(4.0, 0.4),
+        }
+    }
 }
 
 #[repr(C)]

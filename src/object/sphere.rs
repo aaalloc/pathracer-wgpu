@@ -8,6 +8,17 @@ pub struct Sphere {
 }
 
 impl Sphere {
+    #[allow(dead_code)]
+    pub fn empty() -> Self {
+        Self {
+            center: glm::Vec4::new(0.0, 0.0, 0.0, 0.0),
+            radius: 0.0,
+            material_idx: 0,
+            _padding: [0; 2],
+        }
+    }
+
+    #[allow(dead_code)]
     pub fn new(center: glm::Vec3, radius: f32) -> Self {
         Self {
             center: glm::vec3_to_vec4(&center),

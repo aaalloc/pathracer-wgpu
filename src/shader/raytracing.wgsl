@@ -25,7 +25,8 @@ const MAX_T = 1000f;
 @group(1) @binding(1) var<storage, read> spheres: array<Sphere>;
 @group(1) @binding(2) var<storage, read> materials: array<Material>;
 @group(1) @binding(3) var<storage, read> textures: array<array<f32, 3>>;
-
+// TODO: for now, surfaces will represent a single Mesh
+@group(1) @binding(4) var<storage, read> surfaces: array<Surface>;
 
 
 @vertex
@@ -171,6 +172,11 @@ struct Sphere {
     material_index: u32,
 };
 
+struct Surface {
+    vertices: array<vec3<f32>, 3>,
+    normals: array<vec3<f32>, 3>,
+};
+
 const MAT_LAMBERTIAN = 0u;
 const MAT_METAL = 1u;
 const MAT_DIELECTRIC = 2u;
@@ -247,6 +253,53 @@ fn sphereIntersection(ray: Ray, sphere: Sphere, t: f32, material_index: u32) -> 
 }
 
 
+fn hit_triangle(
+    triangle_index: u32,
+    ray: Ray,
+    ray_min: f32,
+    ray_max: f32,
+    hit: ptr<function, HitRecord>,
+) -> bool {
+    let surface = surfaces[triangle_index];
+
+    let v0 = surface.vertices[0];
+    let v1 = surface.vertices[1];
+    let v2 = surface.vertices[2];
+
+    let e1 = v1 - v0;
+    let e2 = v2 - v0;
+    let h = cross(ray.direction, e2);
+    let a = dot(e1, h);
+
+    if a > -EPSILON && a < EPSILON {
+        return false;
+    }
+
+    let f = 1.0 / a;
+    let s = ray.origin - v0;
+    let u = f * dot(s, h);
+
+    if u < 0.0 || u > 1.0 {
+        return false;
+    }
+
+    let q = cross(s, e1);
+    let v = f * dot(ray.direction, q);
+
+    if v < 0.0 || u + v > 1.0 {
+        return false;
+    }
+
+    let t = f * dot(e2, q);
+    if t > ray_min && t < ray_max {
+        let normal = normalize(cross(e1, e2));
+        *hit = HitRecord(ray.origin + t * ray.direction, normal, t, 0u, true);
+        return true;
+    }
+
+    return false;
+}
+
 fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool {
     var closest_so_far = MAX_T;
     var hit_anything = false;
@@ -262,7 +315,14 @@ fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool 
                 }
             }
             case OBJECT_MESHES: {
-                // TODO
+                // for (var j = 0u; j < arrayLength(&surfaces); j += 1u) {
+                for (var j = 0u; j < 10; j += 1u) {
+                    if hit_triangle(j, ray, MIN_T, closest_so_far, &tmp_rec) {
+                        hit_anything = true;
+                        closest_so_far = tmp_rec.t;
+                        *intersection = tmp_rec;
+                    }
+                }
             }
             default: {
                 // Do nothing
