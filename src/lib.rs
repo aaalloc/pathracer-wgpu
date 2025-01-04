@@ -19,6 +19,7 @@ mod utils;
 mod scene;
 extern crate nalgebra_glm as glm;
 
+mod object;
 struct MyUserEvent;
 
 struct State<'a> {

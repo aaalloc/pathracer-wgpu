@@ -1,0 +1,19 @@
+#[repr(C)]
+#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable, PartialEq)]
+pub struct Sphere {
+    pub center: glm::Vec4,  // 0 byte offset
+    pub radius: f32,        // 16 byte offset
+    pub material_idx: u32,  // 20 byte offset
+    pub _padding: [u32; 2], // 24 byte offset, 8 bytes size
+}
+
+impl Sphere {
+    pub fn new(center: glm::Vec3, radius: f32) -> Self {
+        Self {
+            center: glm::vec3_to_vec4(&center),
+            radius,
+            material_idx: 0,
+            _padding: [0; 2],
+        }
+    }
+}

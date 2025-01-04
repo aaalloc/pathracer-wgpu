@@ -152,10 +152,17 @@ impl<'a> RenderContext<'a> {
         };
 
         let (scene_bind_group_layout, scene_bind_group) = {
+            let objects_buffer = StorageBuffer::new_from_bytes(
+                &device,
+                bytemuck::cast_slice(scene.objects.as_slice()),
+                0_u32,
+                Some("objects buffer"),
+            );
+
             let sphere_buffer = StorageBuffer::new_from_bytes(
                 &device,
                 bytemuck::cast_slice(scene.spheres.as_slice()),
-                0_u32,
+                1_u32,
                 Some("scene buffer"),
             );
 
@@ -168,20 +175,21 @@ impl<'a> RenderContext<'a> {
             let material_buffer = StorageBuffer::new_from_bytes(
                 &device,
                 bytemuck::cast_slice(material_data.as_slice()),
-                1_u32,
+                2_u32,
                 Some("material buffer"),
             );
 
             let texture_buffer = StorageBuffer::new_from_bytes(
                 &device,
                 bytemuck::cast_slice(global_texture_data.as_slice()),
-                2_u32,
+                3_u32,
                 Some("texture buffer"),
             );
 
             let scene_bind_group_layout =
                 device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                     entries: &[
+                        objects_buffer.layout(wgpu::ShaderStages::FRAGMENT, true),
                         sphere_buffer.layout(wgpu::ShaderStages::FRAGMENT, true),
                         material_buffer.layout(wgpu::ShaderStages::FRAGMENT, true),
                         texture_buffer.layout(wgpu::ShaderStages::FRAGMENT, true),
@@ -192,6 +200,7 @@ impl<'a> RenderContext<'a> {
             let scene_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 layout: &scene_bind_group_layout,
                 entries: &[
+                    objects_buffer.binding(),
                     sphere_buffer.binding(),
                     material_buffer.binding(),
                     texture_buffer.binding(),

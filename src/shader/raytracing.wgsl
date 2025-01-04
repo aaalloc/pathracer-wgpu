@@ -21,10 +21,12 @@ const MAX_T = 1000f;
 @group(0) @binding(2) var<uniform> render_param: RenderParam;
 @group(0) @binding(3) var<storage, read_write> image_buffer: array<array<f32, 3>>;
 
+@group(1) @binding(0) var<storage, read> objects: array<Object>;
+@group(1) @binding(1) var<storage, read> spheres: array<Sphere>;
+@group(1) @binding(2) var<storage, read> materials: array<Material>;
+@group(1) @binding(3) var<storage, read> textures: array<array<f32, 3>>;
 
-@group(1) @binding(0) var<storage, read> spheres: array<Sphere>;
-@group(1) @binding(1) var<storage, read> materials: array<Material>;
-@group(1) @binding(2) var<storage, read> textures: array<array<f32, 3>>;
+
 
 @vertex
 fn vs_main(
@@ -150,6 +152,14 @@ struct Camera {
     lowerLeftCorner: vec3<f32>,
 }
 
+struct Object {
+    id: u32,
+    obj_type: u32,
+};
+
+const OBJECT_SPHERE = 0u;
+const OBJECT_MESHES = 1u;
+
 struct Ray {
     origin: vec3<f32>,
     direction: vec3<f32>,
@@ -242,11 +252,21 @@ fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool 
     var hit_anything = false;
     var tmp_rec = HitRecord();
 
-    for (var i = 0u; i < arrayLength(&spheres); i += 1u) {
-        if hit_sphere(i, ray, MIN_T, closest_so_far, &tmp_rec) {
-            hit_anything = true;
-            closest_so_far = tmp_rec.t;
-            *intersection = tmp_rec;
+    for (var i = 0u; i < arrayLength(&objects); i += 1u) {
+        switch (objects[i].obj_type) {
+            case OBJECT_SPHERE: {
+                if hit_sphere(objects[i].id, ray, MIN_T, closest_so_far, &tmp_rec) {
+                    hit_anything = true;
+                    closest_so_far = tmp_rec.t;
+                    *intersection = tmp_rec;
+                }
+            }
+            case OBJECT_MESHES: {
+                // TODO
+            }
+            default: {
+                // Do nothing
+            }
         }
     }
 

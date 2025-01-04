@@ -4,9 +4,12 @@ pub use camera::{Camera, CameraController, GpuCamera};
 mod material;
 pub use material::{GpuMaterial, Material, Texture};
 
+use crate::object::{self, Object, Sphere};
+
 #[derive(Clone, Debug)]
 pub struct Scene {
     pub materials: Vec<Material>,
+    pub objects: Vec<Object>,
     pub spheres: Vec<Sphere>,
     pub camera: Camera,
     pub camera_controller: CameraController,
@@ -94,7 +97,14 @@ impl Scene {
             focus_distance: 10.0,
         };
 
+        let objects = spheres
+            .iter()
+            .enumerate()
+            .map(|(i, _)| Object::new(i as u32, object::ObjectType::Sphere))
+            .collect();
+
         Self {
+            objects,
             camera,
             materials,
             spheres,
@@ -104,34 +114,34 @@ impl Scene {
         }
     }
 
-    #[allow(dead_code)]
-    pub fn new(
-        camera: Camera,
-        spheres: Vec<(Sphere, Material)>,
-        render_param: RenderParam,
-        frame_data: FrameData,
-        camera_controller: CameraController,
-    ) -> Self {
-        let mut materials = Vec::new();
-        let mut s = Vec::new();
+    // #[allow(dead_code)]
+    // pub fn new(
+    //     camera: Camera,
+    //     spheres: Vec<(Sphere, Material)>,
+    //     render_param: RenderParam,
+    //     frame_data: FrameData,
+    //     camera_controller: CameraController,
+    // ) -> Self {
+    //     let mut materials = Vec::new();
+    //     let mut s = Vec::new();
 
-        for (sphere, material) in spheres {
-            materials.push(material);
-            s.push(Sphere {
-                material_idx: materials.len() as u32 - 1,
-                ..sphere
-            });
-        }
+    //     for (sphere, material) in spheres {
+    //         materials.push(material);
+    //         s.push(Sphere {
+    //             material_idx: materials.len() as u32 - 1,
+    //             ..sphere
+    //         });
+    //     }
 
-        Self {
-            camera,
-            materials,
-            spheres: s,
-            render_param,
-            frame_data,
-            camera_controller,
-        }
-    }
+    //     Self {
+    //         camera,
+    //         materials,
+    //         spheres: s,
+    //         render_param,
+    //         frame_data,
+    //         camera_controller,
+    //     }
+    // }
 }
 
 #[repr(C)]
@@ -170,25 +180,5 @@ pub struct FrameData {
 impl PartialEq for FrameData {
     fn eq(&self, other: &Self) -> bool {
         self.width == other.width && self.height == other.height
-    }
-}
-
-#[repr(C)]
-#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable, PartialEq)]
-pub struct Sphere {
-    center: glm::Vec4,  // 0 byte offset
-    radius: f32,        // 16 byte offset
-    material_idx: u32,  // 20 byte offset
-    _padding: [u32; 2], // 24 byte offset, 8 bytes size
-}
-
-impl Sphere {
-    pub fn new(center: glm::Vec3, radius: f32) -> Self {
-        Self {
-            center: glm::vec3_to_vec4(&center),
-            radius,
-            material_idx: 0,
-            _padding: [0; 2],
-        }
     }
 }
