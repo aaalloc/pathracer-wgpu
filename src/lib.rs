@@ -171,8 +171,8 @@ pub async fn run() {
             &Scene::teapot_scene(
                 scene::RenderParam {
                     samples_per_pixel: 1,
-                    max_depth: 7,
-                    samples_max_per_pixel: 1000,
+                    max_depth: 2,
+                    samples_max_per_pixel: 1,
                     total_samples: 0,
                     clear_samples: 0,
                 },

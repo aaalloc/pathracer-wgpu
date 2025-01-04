@@ -127,17 +127,21 @@ impl Scene {
 
         materials.push(ground_material);
 
-        let path_str = "mesh/teapot.obj";
+        let path_str = "assets/mesh/teapot.obj";
         let options = tobj::LoadOptions {
+            triangulate: true,
             ..Default::default()
         };
+        println!("Current path: {:?}", std::env::current_dir().unwrap());
+
         let s = tobj::load_obj(path_str, &options).unwrap().0[0].clone();
 
         let meshes = Mesh::from_tobj(s);
+
         objects.push(Object::new(0, ObjectType::Mesh));
 
         let camera = Camera {
-            eye_pos: glm::vec3(0.0, 0.0, 5.0),
+            eye_pos: glm::vec3(0.0, 0.0, 50.0),
             eye_dir: glm::vec3(0.0, 0.0, -1.0),
             up: glm::vec3(0.0, 1.0, 0.0),
             vfov: 45.0,

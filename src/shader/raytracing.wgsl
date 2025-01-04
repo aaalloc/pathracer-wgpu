@@ -173,8 +173,8 @@ struct Sphere {
 };
 
 struct Surface {
-    vertices: array<vec3<f32>, 3>,
-    normals: array<vec3<f32>, 3>,
+    vertices: array<vec4<f32>, 3>,
+    normals: array<vec4<f32>, 3>,
 };
 
 const MAT_LAMBERTIAN = 0u;
@@ -252,7 +252,6 @@ fn sphereIntersection(ray: Ray, sphere: Sphere, t: f32, material_index: u32) -> 
     return HitRecord(p, normal, t, material_index, front_face);
 }
 
-
 fn hit_triangle(
     triangle_index: u32,
     ray: Ray,
@@ -262,12 +261,8 @@ fn hit_triangle(
 ) -> bool {
     let surface = surfaces[triangle_index];
 
-    let v0 = surface.vertices[0];
-    let v1 = surface.vertices[1];
-    let v2 = surface.vertices[2];
-
-    let e1 = v1 - v0;
-    let e2 = v2 - v0;
+    let e1 = surface.vertices[1].xyz - surface.vertices[0].xyz;
+    let e2 = surface.vertices[2].xyz - surface.vertices[0].xyz;
     let h = cross(ray.direction, e2);
     let a = dot(e1, h);
 
@@ -276,7 +271,7 @@ fn hit_triangle(
     }
 
     let f = 1.0 / a;
-    let s = ray.origin - v0;
+    let s = ray.origin - surface.vertices[0].xyz;
     let u = f * dot(s, h);
 
     if u < 0.0 || u > 1.0 {
@@ -292,7 +287,7 @@ fn hit_triangle(
 
     let t = f * dot(e2, q);
     if t > ray_min && t < ray_max {
-        let normal = normalize(cross(e1, e2));
+        let normal = normalize(cross(e1, e2)).xyz;
         *hit = HitRecord(ray.origin + t * ray.direction, normal, t, 0u, true);
         return true;
     }
@@ -315,8 +310,7 @@ fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool 
                 }
             }
             case OBJECT_MESHES: {
-                // for (var j = 0u; j < arrayLength(&surfaces); j += 1u) {
-                for (var j = 0u; j < 10; j += 1u) {
+                for (var j = 0u; j < arrayLength(&surfaces); j += 1u) {
                     if hit_triangle(j, ray, MIN_T, closest_so_far, &tmp_rec) {
                         hit_anything = true;
                         closest_so_far = tmp_rec.t;
