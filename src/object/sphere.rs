@@ -1,3 +1,5 @@
+use super::aabb;
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable, PartialEq)]
 pub struct Sphere {
@@ -25,6 +27,18 @@ impl Sphere {
             radius,
             material_idx: 0,
             _padding: [0; 2],
+        }
+    }
+
+    pub fn get_bounding_box(&self) -> aabb::AABB {
+        let radius = glm::vec3(self.radius, self.radius, self.radius);
+        let center = self.center.xyz();
+
+        aabb::AABB {
+            min: center - radius,
+            max: center + radius,
+            left_child: 0,
+            right_child: 0,
         }
     }
 }

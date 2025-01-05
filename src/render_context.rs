@@ -218,6 +218,13 @@ impl<'a> RenderContext<'a> {
                 Some("surfaces buffer"),
             );
 
+            let aabb_buffer = StorageBuffer::new_from_bytes(
+                &device,
+                bytemuck::cast_slice(scene.get_bvh().as_slice()),
+                5_u32,
+                Some("aabb buffer"),
+            );
+
             let scene_bind_group_layout =
                 device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                     entries: &[
@@ -226,6 +233,7 @@ impl<'a> RenderContext<'a> {
                         material_buffer.layout(wgpu::ShaderStages::FRAGMENT, true),
                         texture_buffer.layout(wgpu::ShaderStages::FRAGMENT, true),
                         surfaces_buffer.layout(wgpu::ShaderStages::FRAGMENT, true),
+                        aabb_buffer.layout(wgpu::ShaderStages::FRAGMENT, true),
                     ],
                     label: Some("scene layout"),
                 });
@@ -238,6 +246,7 @@ impl<'a> RenderContext<'a> {
                     material_buffer.binding(),
                     texture_buffer.binding(),
                     surfaces_buffer.binding(),
+                    aabb_buffer.binding(),
                 ],
                 label: Some("scene bind group"),
             });

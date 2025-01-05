@@ -4,6 +4,9 @@ pub use sphere::Sphere;
 mod mesh;
 pub use mesh::Mesh;
 
+mod aabb;
+pub use aabb::AABB;
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable, PartialEq)]
 pub struct Object {

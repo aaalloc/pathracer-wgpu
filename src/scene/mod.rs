@@ -4,7 +4,7 @@ pub use camera::{Camera, CameraController, GpuCamera};
 mod material;
 pub use material::{GpuMaterial, Material, Texture};
 
-use crate::object::{self, Mesh, Object, ObjectType, Sphere};
+use crate::object::{self, Mesh, Object, ObjectType, Sphere, AABB};
 
 #[derive(Clone, Debug)]
 pub struct Scene {
@@ -159,6 +159,90 @@ impl Scene {
             frame_data,
             camera_controller: CameraController::new(4.0, 0.4),
         }
+    }
+
+    pub fn get_bvh(&self) -> Vec<AABB> {
+        let mut bvh = Vec::new();
+
+        let axis = rand::random::<u32>() % 3;
+        let mut spheres = self.spheres.clone();
+
+        spheres.sort_by(|a, b| {
+            let a = a.get_bounding_box();
+            let b = b.get_bounding_box();
+
+            a.min[axis as usize]
+                .partial_cmp(&b.min[axis as usize])
+                .unwrap()
+        });
+
+        let mut stack = Vec::new();
+        stack.push((0, spheres.len(), 0));
+
+        while let Some((start, end, _)) = stack.pop() {
+            let mut min = glm::vec3(std::f32::INFINITY, std::f32::INFINITY, std::f32::INFINITY);
+            let mut max = glm::vec3(
+                std::f32::NEG_INFINITY,
+                std::f32::NEG_INFINITY,
+                std::f32::NEG_INFINITY,
+            );
+
+            for i in start..end {
+                let sphere = &spheres[i];
+                let aabb = sphere.get_bounding_box();
+
+                min = glm::vec3(
+                    min.x.min(aabb.min.x),
+                    min.y.min(aabb.min.y),
+                    min.z.min(aabb.min.z),
+                );
+
+                max = glm::vec3(
+                    max.x.max(aabb.max.x),
+                    max.y.max(aabb.max.y),
+                    max.z.max(aabb.max.z),
+                );
+            }
+
+            let mid = (start + end) / 2;
+
+            let left_child = if mid - start == 1 {
+                start as u32
+            } else {
+                bvh.len() as u32 + 1
+            };
+
+            let right_child = if end - mid == 1 {
+                mid as u32
+            } else {
+                bvh.len() as u32 + 2
+            };
+
+            bvh.push(AABB {
+                min,
+                max,
+                left_child,
+                right_child,
+            });
+
+            if mid - start > 1 {
+                stack.push((start, mid, bvh.len() as u32 - 1));
+            }
+
+            if end - mid > 1 {
+                stack.push((mid, end, bvh.len() as u32 - 1));
+            }
+        }
+
+        // DEBUG: traverse bvh and print a tree
+        for (i, aabb) in bvh.iter().enumerate() {
+            println!(
+                "Node: {} min: {:?} max: {:?} left: {} right: {}",
+                i, aabb.min, aabb.max, aabb.left_child, aabb.right_child
+            );
+        }
+
+        bvh
     }
 }
 

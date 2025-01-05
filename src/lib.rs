@@ -20,6 +20,7 @@ mod scene;
 extern crate nalgebra_glm as glm;
 
 mod object;
+
 struct MyUserEvent;
 
 struct State<'a> {
@@ -156,7 +157,7 @@ fn init(
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub async fn run() {
     info!("Starting up");
-    let scale = 2.2;
+    let scale = 2.0;
     let width = 900 * scale as u32;
     let height = 450 * scale as u32;
     let (window, event_loop) = init(width, height);
