@@ -1,3 +1,5 @@
+use super::{ObjectType, AABB};
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable, PartialEq)]
 // TODO: For the moment, vec4 for padding, include manually
@@ -62,5 +64,23 @@ impl Mesh {
             normals: [glm::vec4(0.0, 0.0, 0.0, 0.0); 3],
         });
         indices.collect()
+    }
+
+    pub fn get_aabb(&self) -> AABB {
+        let mut min = glm::vec3(self.vertices[0].x, self.vertices[0].y, self.vertices[0].z);
+        let mut max = glm::vec3(self.vertices[0].x, self.vertices[0].y, self.vertices[0].z);
+
+        for vertex in &self.vertices {
+            let vertex_pos = glm::vec3(vertex.x, vertex.y, vertex.z);
+            min = glm::min2(&min, &vertex_pos);
+            max = glm::max2(&max, &vertex_pos);
+        }
+
+        AABB {
+            min,
+            max,
+            left_child: 0,
+            right_child: 0,
+        }
     }
 }

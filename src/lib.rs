@@ -169,11 +169,11 @@ pub async fn run() {
         last_time: instant::Instant::now(),
         render_context: RenderContext::new(
             &window,
-            &Scene::teapot_scene(
+            &Scene::raytracing_scene_oneweek(
                 scene::RenderParam {
                     samples_per_pixel: 1,
-                    max_depth: 2,
-                    samples_max_per_pixel: 1,
+                    max_depth: 7,
+                    samples_max_per_pixel: 1000,
                     total_samples: 0,
                     clear_samples: 0,
                 },

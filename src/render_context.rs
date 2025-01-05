@@ -6,6 +6,7 @@ use winit::{
 };
 
 use crate::{
+    object::get_bvh,
     scene::{GpuCamera, GpuMaterial, Scene},
     utils::{EguiRenderer, StorageBuffer, UniformBuffer, Vertex},
 };
@@ -220,7 +221,9 @@ impl<'a> RenderContext<'a> {
 
             let aabb_buffer = StorageBuffer::new_from_bytes(
                 &device,
-                bytemuck::cast_slice(scene.get_bvh().as_slice()),
+                bytemuck::cast_slice(
+                    get_bvh(&scene.objects, &scene.spheres, &scene.meshes).as_slice(),
+                ),
                 5_u32,
                 Some("aabb buffer"),
             );

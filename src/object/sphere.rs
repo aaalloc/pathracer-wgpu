@@ -1,4 +1,4 @@
-use super::aabb;
+use super::{aabb, ObjectType};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable, PartialEq)]
@@ -30,7 +30,7 @@ impl Sphere {
         }
     }
 
-    pub fn get_bounding_box(&self) -> aabb::AABB {
+    pub fn get_aabb(&self) -> aabb::AABB {
         let radius = glm::vec3(self.radius, self.radius, self.radius);
         let center = self.center.xyz();
 
