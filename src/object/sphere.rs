@@ -1,4 +1,4 @@
-use super::{aabb, ObjectType};
+use super::aabb;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable, PartialEq)]
