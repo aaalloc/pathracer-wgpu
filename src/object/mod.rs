@@ -5,7 +5,7 @@ mod mesh;
 pub use mesh::Mesh;
 
 mod aabb;
-pub use aabb::AABB;
+pub use aabb::{Bounds, AABB};
 
 mod bvh;
 pub use bvh::get_bvh;

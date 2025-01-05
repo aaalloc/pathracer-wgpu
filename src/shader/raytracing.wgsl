@@ -166,11 +166,19 @@ struct Ray {
     direction: vec3<f32>,
 };
 
-struct AABB {
-    min: vec3<f32>,
+struct Bouding {
+    min: vec4<f32>,
     max: vec3<f32>,
-    left_child: u32,
-    right_child: u32,
+};
+
+struct AABB {
+    min: vec4<f32>,
+    max: vec3<f32>,
+    offset: u32,
+    n_obj: u32,
+    axis: u32,
+    obj_type: u32,
+    obj_offset: u32,
 };
 
 struct Sphere {
@@ -302,34 +310,106 @@ fn hit_triangle(
     return false;
 }
 
+fn hit_object(
+    object_index: u32,
+    ray: Ray,
+    ray_min: f32,
+    ray_max: f32,
+    hit: ptr<function, HitRecord>,
+) -> bool {
+    switch objects[object_index].obj_type {
+        case OBJECT_SPHERE: {
+            return hit_sphere(object_index, ray, ray_min, ray_max, hit);
+        }
+        case OBJECT_MESHES: {
+            return hit_triangle(object_index, ray, ray_min, ray_max, hit);
+        }
+        default: {
+            return false;
+        }
+    }
+}
+
 fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool {
     var closest_so_far = MAX_T;
     var hit_anything = false;
     var tmp_rec = HitRecord();
 
     for (var i = 0u; i < arrayLength(&objects); i += 1u) {
-        switch (objects[i].obj_type) {
-            case OBJECT_SPHERE: {
-                if hit_sphere(objects[i].id, ray, MIN_T, closest_so_far, &tmp_rec) {
+        if hit_object(i, ray, MIN_T, closest_so_far, &tmp_rec) {
+            hit_anything = true;
+            closest_so_far = tmp_rec.t;
+            *intersection = tmp_rec;
+        }
+    }
+
+    return hit_anything;
+}
+
+// https://pbr-book.org/3ed-2018/Primitives_and_Intersection_Acceleration/Bounding_Volume_Hierarchies#LinearBVHNode::secondChildOffset
+fn check_intersection_bvh(ray: Ray, intersection: ptr<function, HitRecord>) -> bool {
+    var closest_so_far = MAX_T;
+    var hit_anything = false;
+    var tmp_rec = HitRecord();
+
+    let invD = 1.0 / ray.direction;
+
+    var to_visit_offset = 0u;
+    var current_node_index = 0u;
+    var nodes_to_visit = array<u32, 64>();
+
+    var ray_ = ray;
+
+    var node = aabbs[10];
+    let bounds = Bouding(node.min, node.max);
+    if rayIntersectBV(&ray_, bounds) {
+        if node.n_obj > 0 {
+            for (var j = 0u; j < node.n_obj; j += 1u) {
+                if hit_object(node.obj_offset - 1 + j, ray_, MIN_T, closest_so_far, &tmp_rec) {
                     hit_anything = true;
                     closest_so_far = tmp_rec.t;
                     *intersection = tmp_rec;
                 }
             }
-            case OBJECT_MESHES: {
-                for (var j = 0u; j < arrayLength(&surfaces); j += 1u) {
-                    if hit_triangle(j, ray, MIN_T, closest_so_far, &tmp_rec) {
-                        hit_anything = true;
-                        closest_so_far = tmp_rec.t;
-                        *intersection = tmp_rec;
-                    }
-                }
-            }
-            default: {
-                // Do nothing
-            }
         }
     }
+
+    var max_iterations = 64u;
+    // for (var i = 0u; i < max_iterations; i += 1u) {
+    //     var node = aabbs[current_node_index];
+    //     let bounds = Bouding(node.min, node.max);
+    //     if rayIntersectBV(&ray_, bounds) {
+    //         if node.n_obj > 0 {
+    //             for (var j = 0u; j < node.n_obj; j += 1u) {
+    //                 if hit_object(node.obj_offset - 1 + j, ray_, MIN_T, closest_so_far, &tmp_rec) {
+    //                     hit_anything = true;
+    //                     closest_so_far = tmp_rec.t;
+    //                     *intersection = tmp_rec;
+    //                 }
+    //             }
+    //             if to_visit_offset == 0u {
+    //                 break;
+    //             }
+    //             to_visit_offset -= 1u;
+    //             current_node_index = nodes_to_visit[to_visit_offset];
+    //         } else {
+    //             if ray_.direction[node.axis] < 0.0 {
+    //                 nodes_to_visit[to_visit_offset] = current_node_index + 1u;
+    //                 current_node_index = node.offset;
+    //             } else {
+    //                 nodes_to_visit[to_visit_offset] = node.offset;
+    //                 current_node_index = current_node_index + 1u;
+    //             }
+    //             to_visit_offset += 1u;
+    //         }
+    //     } else {
+    //         if to_visit_offset == 0u {
+    //             break;
+    //         }
+    //         to_visit_offset -= 1u;
+    //         current_node_index = nodes_to_visit[to_visit_offset];
+    //     }
+    // }
 
     return hit_anything;
 }
@@ -364,7 +444,7 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
 
     for (var i = 0u; i < render_param.max_depth; i += 1u) {
         var intersection = HitRecord();
-        if check_intersection(ray, &intersection) {
+        if check_intersection_bvh(ray, &intersection) {
             let material = materials[intersection.material_index];
             let scattered = scatter(ray, intersection, material, rngState);
             color *= scattered.attenuation;
@@ -381,24 +461,15 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
 }
 
 
-fn rayIntersectBV(ray: ptr<function, Ray>, aabb: ptr<function, AABB>) -> bool {
-    let t0 = ((*aabb).min - (*ray).origin) / (*ray).direction;
-    let t1 = ((*aabb).max - (*ray).origin) / (*ray).direction;
+fn rayIntersectBV(ray: ptr<function, Ray>, aabb: Bouding) -> bool {
+    let t0 = ((aabb).min.xyz - (*ray).origin) / (*ray).direction;
+    let t1 = ((aabb).max.xyz - (*ray).origin) / (*ray).direction;
     let tmin = min(t0, t1);
     let tmax = max(t0, t1);
     let maxMinT = max(tmin.x, max(tmin.y, tmin.z));
     let minMaxT = min(tmax.x, min(tmax.y, tmax.z));
     return maxMinT < minMaxT;
 }
-
-fn rayIntersectBVH(
-    ray: Ray,
-    hit: ptr<function, HitRecord>,
-) -> bool {
-    // TODO: Implement BVH traversal
-    return true;
-}
-
 
 fn scatter(ray: Ray, hit: HitRecord, material: Material, rngState: ptr<function, u32>) -> Scatter {
     switch (material.id) 

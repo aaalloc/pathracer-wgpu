@@ -35,10 +35,12 @@ impl Sphere {
         let center = self.center.xyz();
 
         aabb::AABB {
-            min: center - radius,
-            max: center + radius,
-            left_child: 0,
-            right_child: 0,
+            bounds: aabb::Bounds {
+                min: center - radius,
+                max: center + radius,
+            },
+            centroid: center,
+            type_: 0,
         }
     }
 }

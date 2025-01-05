@@ -77,10 +77,9 @@ impl Mesh {
         }
 
         AABB {
-            min,
-            max,
-            left_child: 0,
-            right_child: 0,
+            bounds: super::Bounds { min, max },
+            centroid: (min + max) / 2.0,
+            type_: 1,
         }
     }
 }
