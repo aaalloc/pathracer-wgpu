@@ -27,7 +27,7 @@ const MAX_T = 1000f;
 @group(1) @binding(3) var<storage, read> textures: array<array<f32, 3>>;
 // TODO: for now, surfaces will represent a single Mesh
 @group(1) @binding(4) var<storage, read> surfaces: array<Surface>;
-
+@group(1) @binding(5) var<storage, read> aabbs: array<AABB>;
 
 @vertex
 fn vs_main(
@@ -164,6 +164,13 @@ const OBJECT_MESHES = 1u;
 struct Ray {
     origin: vec3<f32>,
     direction: vec3<f32>,
+};
+
+struct AABB {
+    min: vec3<f32>,
+    max: vec3<f32>,
+    left_child: u32,
+    right_child: u32,
 };
 
 struct Sphere {
@@ -350,22 +357,6 @@ fn get_ray(rngState: ptr<function, u32>, x: f32, y: f32) -> Ray {
 
 
 
-// pub fn from_linear_rgb(c: [f32; 3]) -> Color {
-//     let f = |x: f32| -> u32 {
-//         let y = if x > 0.0031308 {
-//             let a = 0.055;
-//             (1.0 + a) * x.powf(-2.4) - a
-//         } else {
-//             12.92 * x
-//         };
-//         (y * 255.0).round() as u32
-//     };
-//     f(c[0]) << 16 | f(c[1]) << 8 | f(c[2])
-// }
-
-
-
-
 fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
     var ray = first_ray;
     var sky_color = vec3(0.0);
@@ -389,6 +380,24 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
     return color * sky_color;
 }
 
+
+fn rayIntersectBV(ray: ptr<function, Ray>, aabb: ptr<function, AABB>) -> bool {
+    let t0 = ((*aabb).min - (*ray).origin) / (*ray).direction;
+    let t1 = ((*aabb).max - (*ray).origin) / (*ray).direction;
+    let tmin = min(t0, t1);
+    let tmax = max(t0, t1);
+    let maxMinT = max(tmin.x, max(tmin.y, tmin.z));
+    let minMaxT = min(tmax.x, min(tmax.y, tmax.z));
+    return maxMinT < minMaxT;
+}
+
+fn rayIntersectBVH(
+    ray: Ray,
+    hit: ptr<function, HitRecord>,
+) -> bool {
+    // TODO: Implement BVH traversal
+    return true;
+}
 
 
 fn scatter(ray: Ray, hit: HitRecord, material: Material, rngState: ptr<function, u32>) -> Scatter {
