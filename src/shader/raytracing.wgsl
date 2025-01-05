@@ -21,10 +21,13 @@ const MAX_T = 1000f;
 @group(0) @binding(2) var<uniform> render_param: RenderParam;
 @group(0) @binding(3) var<storage, read_write> image_buffer: array<array<f32, 3>>;
 
+@group(1) @binding(0) var<storage, read> objects: array<Object>;
+@group(1) @binding(1) var<storage, read> spheres: array<Sphere>;
+@group(1) @binding(2) var<storage, read> materials: array<Material>;
+@group(1) @binding(3) var<storage, read> textures: array<array<f32, 3>>;
+// TODO: for now, surfaces will represent a single Mesh
+@group(1) @binding(4) var<storage, read> surfaces: array<Surface>;
 
-@group(1) @binding(0) var<storage, read> spheres: array<Sphere>;
-@group(1) @binding(1) var<storage, read> materials: array<Material>;
-@group(1) @binding(2) var<storage, read> textures: array<array<f32, 3>>;
 
 @vertex
 fn vs_main(
@@ -150,6 +153,14 @@ struct Camera {
     lowerLeftCorner: vec3<f32>,
 }
 
+struct Object {
+    id: u32,
+    obj_type: u32,
+};
+
+const OBJECT_SPHERE = 0u;
+const OBJECT_MESHES = 1u;
+
 struct Ray {
     origin: vec3<f32>,
     direction: vec3<f32>,
@@ -159,6 +170,11 @@ struct Sphere {
     center: vec4<f32>,
     radius: f32,
     material_index: u32,
+};
+
+struct Surface {
+    vertices: array<vec4<f32>, 3>,
+    normals: array<vec4<f32>, 3>,
 };
 
 const MAT_LAMBERTIAN = 0u;
@@ -236,17 +252,75 @@ fn sphereIntersection(ray: Ray, sphere: Sphere, t: f32, material_index: u32) -> 
     return HitRecord(p, normal, t, material_index, front_face);
 }
 
+fn hit_triangle(
+    triangle_index: u32,
+    ray: Ray,
+    ray_min: f32,
+    ray_max: f32,
+    hit: ptr<function, HitRecord>,
+) -> bool {
+    let surface = surfaces[triangle_index];
+
+    let e1 = surface.vertices[1].xyz - surface.vertices[0].xyz;
+    let e2 = surface.vertices[2].xyz - surface.vertices[0].xyz;
+    let h = cross(ray.direction, e2);
+    let a = dot(e1, h);
+
+    if a > -EPSILON && a < EPSILON {
+        return false;
+    }
+
+    let f = 1.0 / a;
+    let s = ray.origin - surface.vertices[0].xyz;
+    let u = f * dot(s, h);
+
+    if u < 0.0 || u > 1.0 {
+        return false;
+    }
+
+    let q = cross(s, e1);
+    let v = f * dot(ray.direction, q);
+
+    if v < 0.0 || u + v > 1.0 {
+        return false;
+    }
+
+    let t = f * dot(e2, q);
+    if t > ray_min && t < ray_max {
+        let normal = normalize(cross(e1, e2)).xyz;
+        *hit = HitRecord(ray.origin + t * ray.direction, normal, t, 0u, true);
+        return true;
+    }
+
+    return false;
+}
 
 fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool {
     var closest_so_far = MAX_T;
     var hit_anything = false;
     var tmp_rec = HitRecord();
 
-    for (var i = 0u; i < arrayLength(&spheres); i += 1u) {
-        if hit_sphere(i, ray, MIN_T, closest_so_far, &tmp_rec) {
-            hit_anything = true;
-            closest_so_far = tmp_rec.t;
-            *intersection = tmp_rec;
+    for (var i = 0u; i < arrayLength(&objects); i += 1u) {
+        switch (objects[i].obj_type) {
+            case OBJECT_SPHERE: {
+                if hit_sphere(objects[i].id, ray, MIN_T, closest_so_far, &tmp_rec) {
+                    hit_anything = true;
+                    closest_so_far = tmp_rec.t;
+                    *intersection = tmp_rec;
+                }
+            }
+            case OBJECT_MESHES: {
+                for (var j = 0u; j < arrayLength(&surfaces); j += 1u) {
+                    if hit_triangle(j, ray, MIN_T, closest_so_far, &tmp_rec) {
+                        hit_anything = true;
+                        closest_so_far = tmp_rec.t;
+                        *intersection = tmp_rec;
+                    }
+                }
+            }
+            default: {
+                // Do nothing
+            }
         }
     }
 

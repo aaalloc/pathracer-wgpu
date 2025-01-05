@@ -19,6 +19,7 @@ mod utils;
 mod scene;
 extern crate nalgebra_glm as glm;
 
+mod object;
 struct MyUserEvent;
 
 struct State<'a> {
@@ -155,7 +156,7 @@ fn init(
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub async fn run() {
     info!("Starting up");
-    let scale = 1.0;
+    let scale = 2.2;
     let width = 900 * scale as u32;
     let height = 450 * scale as u32;
     let (window, event_loop) = init(width, height);
@@ -167,11 +168,11 @@ pub async fn run() {
         last_time: instant::Instant::now(),
         render_context: RenderContext::new(
             &window,
-            &Scene::raytracing_scene_oneweek(
+            &Scene::teapot_scene(
                 scene::RenderParam {
                     samples_per_pixel: 1,
-                    max_depth: 7,
-                    samples_max_per_pixel: 1000,
+                    max_depth: 2,
+                    samples_max_per_pixel: 1,
                     total_samples: 0,
                     clear_samples: 0,
                 },

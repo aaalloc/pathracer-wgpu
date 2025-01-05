@@ -140,23 +140,55 @@ impl<'a> RenderContext<'a> {
                 Some("render param buffer"),
             )
         };
+        let (image_bind_group, image_bind_group_layout) = {
+            let image_buffer = {
+                let buffer = vec![[0_f32; 3]; size.width as usize * size.height as usize];
+                StorageBuffer::new_from_bytes(
+                    &device,
+                    bytemuck::cast_slice(buffer.as_slice()),
+                    3_u32,
+                    Some("image buffer"),
+                )
+            };
 
-        let image_buffer = {
-            let buffer = vec![[0_f32; 3]; size.width as usize * size.height as usize];
-            StorageBuffer::new_from_bytes(
-                &device,
-                bytemuck::cast_slice(buffer.as_slice()),
-                3_u32,
-                Some("image buffer"),
-            )
+            let image_bind_group_layout =
+                device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    entries: &[
+                        camera_buffer.layout(wgpu::ShaderStages::FRAGMENT),
+                        frame_data_buffer.layout(wgpu::ShaderStages::FRAGMENT),
+                        render_param_buffer.layout(wgpu::ShaderStages::FRAGMENT),
+                        image_buffer.layout(wgpu::ShaderStages::FRAGMENT, false),
+                    ],
+                    label: Some("image layout"),
+                });
+
+            let image_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                layout: &image_bind_group_layout,
+                entries: &[
+                    camera_buffer.binding(),
+                    frame_data_buffer.binding(),
+                    render_param_buffer.binding(),
+                    image_buffer.binding(),
+                ],
+                label: Some("image bind group"),
+            });
+
+            (image_bind_group, image_bind_group_layout)
         };
 
         let (scene_bind_group_layout, scene_bind_group) = {
+            let objects_buffer = StorageBuffer::new_from_bytes(
+                &device,
+                bytemuck::cast_slice(scene.objects.as_slice()),
+                0_u32,
+                Some("objects buffer"),
+            );
+
             let sphere_buffer = StorageBuffer::new_from_bytes(
                 &device,
                 bytemuck::cast_slice(scene.spheres.as_slice()),
-                0_u32,
-                Some("scene buffer"),
+                1_u32,
+                Some("sphere buffer"),
             );
 
             let mut global_texture_data = Vec::new();
@@ -168,23 +200,32 @@ impl<'a> RenderContext<'a> {
             let material_buffer = StorageBuffer::new_from_bytes(
                 &device,
                 bytemuck::cast_slice(material_data.as_slice()),
-                1_u32,
+                2_u32,
                 Some("material buffer"),
             );
 
             let texture_buffer = StorageBuffer::new_from_bytes(
                 &device,
                 bytemuck::cast_slice(global_texture_data.as_slice()),
-                2_u32,
+                3_u32,
                 Some("texture buffer"),
+            );
+
+            let surfaces_buffer = StorageBuffer::new_from_bytes(
+                &device,
+                bytemuck::cast_slice(scene.meshes.as_slice()),
+                4_u32,
+                Some("surfaces buffer"),
             );
 
             let scene_bind_group_layout =
                 device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                     entries: &[
+                        objects_buffer.layout(wgpu::ShaderStages::FRAGMENT, true),
                         sphere_buffer.layout(wgpu::ShaderStages::FRAGMENT, true),
                         material_buffer.layout(wgpu::ShaderStages::FRAGMENT, true),
                         texture_buffer.layout(wgpu::ShaderStages::FRAGMENT, true),
+                        surfaces_buffer.layout(wgpu::ShaderStages::FRAGMENT, true),
                     ],
                     label: Some("scene layout"),
                 });
@@ -192,9 +233,11 @@ impl<'a> RenderContext<'a> {
             let scene_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 layout: &scene_bind_group_layout,
                 entries: &[
+                    objects_buffer.binding(),
                     sphere_buffer.binding(),
                     material_buffer.binding(),
                     texture_buffer.binding(),
+                    surfaces_buffer.binding(),
                 ],
                 label: Some("scene bind group"),
             });
@@ -229,28 +272,6 @@ impl<'a> RenderContext<'a> {
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
         };
-
-        let image_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[
-                    camera_buffer.layout(wgpu::ShaderStages::FRAGMENT),
-                    frame_data_buffer.layout(wgpu::ShaderStages::FRAGMENT),
-                    render_param_buffer.layout(wgpu::ShaderStages::FRAGMENT),
-                    image_buffer.layout(wgpu::ShaderStages::FRAGMENT, false),
-                ],
-                label: Some("image layout"),
-            });
-
-        let image_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &image_bind_group_layout,
-            entries: &[
-                camera_buffer.binding(),
-                frame_data_buffer.binding(),
-                render_param_buffer.binding(),
-                image_buffer.binding(),
-            ],
-            label: Some("image bind group"),
-        });
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
