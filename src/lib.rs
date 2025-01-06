@@ -168,7 +168,7 @@ pub async fn run() {
         last_time: instant::Instant::now(),
         render_context: RenderContext::new(
             &window,
-            &Scene::raytracing_scene_oneweek(
+            &Scene::cornellius_box(
                 scene::RenderParam {
                     samples_per_pixel: 1,
                     max_depth: 2,

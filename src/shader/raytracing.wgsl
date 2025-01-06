@@ -289,7 +289,7 @@ fn hit_triangle(
     let t = f * dot(e2, q);
     if t > ray_min && t < ray_max {
         let normal = normalize(cross(e1, e2)).xyz;
-        *hit = HitRecord(ray.origin + t * ray.direction, normal, t, 0u, true);
+        *hit = HitRecord(ray.origin + t * ray.direction, normal, t, triangle_index, true);
         return true;
     }
 
@@ -397,7 +397,7 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
         }
     }
     // return color * sky_color;
-    return color * vec3(0.1);
+    return color * vec3(0.01);
 }
 
 

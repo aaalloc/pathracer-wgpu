@@ -37,6 +37,222 @@ impl Mesh {
         ]
     }
 
+    pub fn left_wall_quad() -> (Mesh, Mesh) {
+        (
+            Mesh {
+                vertices: [
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 1.0, 1.0),
+                    glm::vec4(0.0, 1.0, 0.0, 1.0),
+                ],
+                normals: [
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                ],
+            },
+            Mesh {
+                vertices: [
+                    glm::vec4(0.0, 1.0, 1.0, 1.0),
+                    glm::vec4(0.0, 0.0, 1.0, 1.0),
+                    glm::vec4(0.0, 1.0, 0.0, 1.0),
+                ],
+                normals: [
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                ],
+            },
+        )
+    }
+
+    pub fn right_wall_quad() -> (Mesh, Mesh) {
+        (
+            Mesh {
+                vertices: [
+                    glm::vec4(1.0, 0.0, 0.0, 1.0),
+                    glm::vec4(1.0, 1.0, 0.0, 1.0),
+                    glm::vec4(1.0, 0.0, 1.0, 1.0),
+                ],
+                normals: [
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                ],
+            },
+            Mesh {
+                vertices: [
+                    glm::vec4(1.0, 1.0, 0.0, 1.0),
+                    glm::vec4(1.0, 1.0, 1.0, 1.0),
+                    glm::vec4(1.0, 0.0, 1.0, 1.0),
+                ],
+                normals: [
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                ],
+            },
+        )
+    }
+
+    pub fn quad(mid: glm::Vec3, size: f32) -> Vec<Mesh> {
+        let half_size = size / 2.0;
+        vec![
+            Mesh {
+                vertices: [
+                    glm::vec4(mid.x - half_size, mid.y - half_size, mid.z, 1.0),
+                    glm::vec4(mid.x + half_size, mid.y - half_size, mid.z, 1.0),
+                    glm::vec4(mid.x - half_size, mid.y + half_size, mid.z, 1.0),
+                ],
+                normals: [
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                ],
+            },
+            Mesh {
+                vertices: [
+                    glm::vec4(mid.x + half_size, mid.y + half_size, mid.z, 1.0),
+                    glm::vec4(mid.x + half_size, mid.y - half_size, mid.z, 1.0),
+                    glm::vec4(mid.x - half_size, mid.y + half_size, mid.z, 1.0),
+                ],
+                normals: [
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                ],
+            },
+        ]
+    }
+
+    pub fn ceiling_quad() -> (Mesh, Mesh) {
+        (
+            Mesh {
+                vertices: [
+                    glm::vec4(0.0, 1.0, 0.0, 1.0),
+                    glm::vec4(0.0, 1.0, 1.0, 1.0),
+                    glm::vec4(1.0, 1.0, 0.0, 1.0),
+                ],
+                normals: [
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                ],
+            },
+            Mesh {
+                vertices: [
+                    glm::vec4(1.0, 1.0, 0.0, 1.0),
+                    glm::vec4(0.0, 1.0, 1.0, 1.0),
+                    glm::vec4(1.0, 1.0, 1.0, 1.0),
+                ],
+                normals: [
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                ],
+            },
+        )
+    }
+
+    pub fn floor_quad() -> (Mesh, Mesh) {
+        (
+            Mesh {
+                vertices: [
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 1.0, 1.0),
+                    glm::vec4(1.0, 0.0, 0.0, 1.0),
+                ],
+                normals: [
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                ],
+            },
+            Mesh {
+                vertices: [
+                    glm::vec4(1.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 1.0, 1.0),
+                    glm::vec4(1.0, 0.0, 1.0, 1.0),
+                ],
+                normals: [
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                ],
+            },
+        )
+    }
+
+    pub fn back_wall_quad() -> (Mesh, Mesh) {
+        (
+            Mesh {
+                vertices: [
+                    glm::vec4(0.0, 0.0, 1.0, 1.0),
+                    glm::vec4(0.0, 1.0, 1.0, 1.0),
+                    glm::vec4(1.0, 0.0, 1.0, 1.0),
+                ],
+                normals: [
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                ],
+            },
+            Mesh {
+                vertices: [
+                    glm::vec4(1.0, 0.0, 1.0, 1.0),
+                    glm::vec4(0.0, 1.0, 1.0, 1.0),
+                    glm::vec4(1.0, 1.0, 1.0, 1.0),
+                ],
+                normals: [
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                ],
+            },
+        )
+    }
+
+    pub fn ceiling_light_quad() -> (Mesh, Mesh) {
+        (
+            Mesh {
+                vertices: [
+                    glm::vec4(0.25, 0.99, 0.25, 1.0),
+                    glm::vec4(0.25, 0.99, 0.75, 1.0),
+                    glm::vec4(0.75, 0.99, 0.25, 1.0),
+                ],
+                normals: [
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                ],
+            },
+            Mesh {
+                vertices: [
+                    glm::vec4(0.75, 0.99, 0.25, 1.0),
+                    glm::vec4(0.25, 0.99, 0.75, 1.0),
+                    glm::vec4(0.75, 0.99, 0.75, 1.0),
+                ],
+                normals: [
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.0, 1.0),
+                ],
+            },
+        )
+    }
+
+    pub fn cube(mid: glm::Vec3, size: f32) -> Vec<Mesh> {
+        let half_size = size / 2.0;
+        let mut meshes = Vec::new();
+        meshes.extend_from_slice(&Mesh::quad(mid + glm::vec3(0.0, 0.0, half_size), size));
+        meshes.extend_from_slice(&Mesh::quad(mid + glm::vec3(0.0, 0.0, -half_size), size));
+        meshes.extend_from_slice(&Mesh::quad(mid + glm::vec3(0.0, half_size, 0.0), size));
+        meshes.extend_from_slice(&Mesh::quad(mid + glm::vec3(0.0, -half_size, 0.0), size));
+        meshes.extend_from_slice(&Mesh::quad(mid + glm::vec3(half_size, 0.0, 0.0), size));
+        meshes.extend_from_slice(&Mesh::quad(mid + glm::vec3(-half_size, 0.0, 0.0), size));
+        meshes
+    }
+
     pub fn empty() -> Self {
         Self {
             vertices: [glm::vec4(0.0, 0.0, 0.0, 0.0); 3],

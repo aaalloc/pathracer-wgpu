@@ -160,6 +160,87 @@ impl Scene {
             camera_controller: CameraController::new(4.0, 0.4),
         }
     }
+
+    pub fn cornellius_box(render_param: RenderParam, frame_data: FrameData) -> Self {
+        let mut materials = Vec::new();
+        let mut objects = Vec::new();
+        let mut meshes = Vec::new();
+
+        let red = Material::Lambertian {
+            albedo: Texture::new_from_color(glm::vec3(0.65, 0.05, 0.05)),
+        };
+        let white = Material::Lambertian {
+            albedo: Texture::new_from_color(glm::vec3(0.73, 0.73, 0.73)),
+        };
+        let green = Material::Lambertian {
+            albedo: Texture::new_from_color(glm::vec3(0.12, 0.45, 0.15)),
+        };
+        let light = Material::DiffuseLight {
+            emit: Texture::new_from_color(glm::vec3(100.0, 100.0, 100.0)),
+        };
+
+        let left_wall_ = Mesh::left_wall_quad();
+        let right_wall_ = Mesh::right_wall_quad();
+        let ceiling_ = Mesh::ceiling_quad();
+        let floor_ = Mesh::floor_quad();
+        let back_wall_ = Mesh::back_wall_quad();
+        let light_ = Mesh::ceiling_light_quad();
+        meshes.push(left_wall_.0);
+        meshes.push(left_wall_.1);
+        meshes.push(right_wall_.0);
+        meshes.push(right_wall_.1);
+        meshes.push(ceiling_.0);
+        meshes.push(ceiling_.1);
+        meshes.push(floor_.0);
+        meshes.push(floor_.1);
+        meshes.push(back_wall_.0);
+        meshes.push(back_wall_.1);
+        meshes.push(light_.0);
+        meshes.push(light_.1);
+        for i in 0..meshes.len() {
+            objects.push(Object::new(i as u32, ObjectType::Mesh));
+        }
+        materials.push(green.clone());
+        materials.push(green.clone());
+
+        materials.push(red.clone());
+        materials.push(red.clone());
+
+        materials.push(white.clone());
+        materials.push(white.clone());
+
+        materials.push(white.clone());
+        materials.push(white.clone());
+
+        materials.push(white.clone());
+        materials.push(white.clone());
+
+        materials.push(light.clone());
+        materials.push(light.clone());
+
+        // materials.push(green.clone());
+        // materials.push(green.clone());
+
+        let camera = Camera {
+            eye_pos: glm::vec3(0.005863361, -0.1950726, -1.8262501),
+            eye_dir: glm::vec3(0.0, 0.0, 1.0),
+            up: glm::vec3(0.0, 1.0, 0.0),
+            vfov: 40.0,
+            aperture: 0.0,
+            focus_distance: 10.0,
+        };
+
+        Self {
+            objects,
+            camera,
+            meshes,
+            materials,
+            spheres: vec![Sphere::empty()],
+            render_param,
+            frame_data,
+            camera_controller: CameraController::new(4.0, 0.4),
+        }
+    }
 }
 
 #[repr(C)]
