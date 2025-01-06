@@ -180,6 +180,7 @@ struct Surface {
 const MAT_LAMBERTIAN = 0u;
 const MAT_METAL = 1u;
 const MAT_DIELECTRIC = 2u;
+const MAT_DIFFUSE_LIGHT = 3u;
 
 struct Material {
     id: u32,
@@ -375,6 +376,11 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
         var intersection = HitRecord();
         if check_intersection(ray, &intersection) {
             let material = materials[intersection.material_index];
+            if material.id == MAT_DIFFUSE_LIGHT {
+                let emitted = texture_look_up(material.desc, 0.5, 0.5);
+                color *= emitted;
+                break;
+            }
             let scattered = scatter(ray, intersection, material, rngState);
             color *= scattered.attenuation;
             ray = scattered.ray;
@@ -386,7 +392,8 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
             // break;
         }
     }
-    return color * sky_color;
+    // return color * sky_color;
+    return color * vec3(0.1);
 }
 
 

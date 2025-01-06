@@ -34,6 +34,7 @@ pub enum Material {
     Lambertian { albedo: Texture },
     Metal { albedo: Texture, fuzz: f32 },
     Dialectric { ref_idx: f32 },
+    DiffuseLight { emit: Texture },
 }
 
 #[repr(C)]
@@ -78,6 +79,11 @@ impl GpuMaterial {
                     offset: 0xffffffff,
                 },
                 x: *ref_idx,
+            },
+            Material::DiffuseLight { emit } => Self {
+                id: 3,
+                descriptor: Self::append_to_global_texture_data(emit, global_texture_data),
+                x: 0.0,
             },
         }
     }
