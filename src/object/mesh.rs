@@ -73,6 +73,40 @@ impl Mesh {
         }
     }
 
+    pub fn cube() -> Vec<Mesh> {
+        let mut meshes = vec![];
+        let mut mesh = Mesh::quad();
+        translate(&mut mesh, glm::vec3(0.0, 0.0, 0.5));
+        mesh.iter().for_each(|m| meshes.push(m.clone()));
+
+        let mut mesh = Mesh::quad();
+        rotate(&mut mesh, 180., glm::vec3(1.0, 0.0, 0.0));
+        translate(&mut mesh, glm::vec3(0.0, 0.0, -0.5));
+        mesh.iter().for_each(|m| meshes.push(m.clone()));
+
+        let mut mesh = Mesh::quad();
+        rotate(&mut mesh, 90., glm::vec3(0.0, 1.0, 0.0));
+        translate(&mut mesh, glm::vec3(0.5, 0.0, 0.0));
+        mesh.iter().for_each(|m| meshes.push(m.clone()));
+
+        let mut mesh = Mesh::quad();
+        rotate(&mut mesh, 270., glm::vec3(0.0, 1.0, 0.0));
+        translate(&mut mesh, glm::vec3(-0.5, 0.0, 0.0));
+        mesh.iter().for_each(|m| meshes.push(m.clone()));
+
+        let mut mesh = Mesh::quad();
+        rotate(&mut mesh, 90., glm::vec3(1.0, 0.0, 0.0));
+        translate(&mut mesh, glm::vec3(0.0, 0.5, 0.0));
+        mesh.iter().for_each(|m| meshes.push(m.clone()));
+
+        let mut mesh = Mesh::quad();
+        rotate(&mut mesh, 270., glm::vec3(1.0, 0.0, 0.0));
+        translate(&mut mesh, glm::vec3(0.0, -0.5, 0.0));
+        mesh.iter().for_each(|m| meshes.push(m.clone()));
+
+        meshes
+    }
+
     #[allow(dead_code)]
     pub fn from_tobj(tobj: tobj::Model) -> Vec<Mesh> {
         let mesh = &tobj.mesh;

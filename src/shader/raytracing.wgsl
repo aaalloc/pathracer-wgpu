@@ -371,23 +371,6 @@ fn get_ray(rngState: ptr<function, u32>, x: f32, y: f32) -> Ray {
 }
 
 
-
-// pub fn from_linear_rgb(c: [f32; 3]) -> Color {
-//     let f = |x: f32| -> u32 {
-//         let y = if x > 0.0031308 {
-//             let a = 0.055;
-//             (1.0 + a) * x.powf(-2.4) - a
-//         } else {
-//             12.92 * x
-//         };
-//         (y * 255.0).round() as u32
-//     };
-//     f(c[0]) << 16 | f(c[1]) << 8 | f(c[2])
-// }
-
-
-
-
 fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
     var ray = first_ray;
     var sky_color = vec3(0.0);
@@ -417,8 +400,6 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
     return color * sky_color;
     // return color * vec3(0.01);
 }
-
-
 
 fn scatter(ray: Ray, hit: HitRecord, material: Material, rngState: ptr<function, u32>) -> Scatter {
     switch (material.id) 
