@@ -296,32 +296,36 @@ fn hit_triangle(
     return false;
 }
 
+fn hit_object(
+    object_index: u32,
+    ray: Ray,
+    ray_min: f32,
+    ray_max: f32,
+    hit: ptr<function, HitRecord>,
+) -> bool {
+    switch objects[object_index].obj_type {
+        case OBJECT_SPHERE: {
+            return hit_sphere(object_index, ray, ray_min, ray_max, hit);
+        }
+        case OBJECT_MESHES: {
+            return hit_triangle(object_index, ray, ray_min, ray_max, hit);
+        }
+        default: {
+            return false;
+        }
+    }
+}
+
 fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool {
     var closest_so_far = MAX_T;
     var hit_anything = false;
     var tmp_rec = HitRecord();
 
     for (var i = 0u; i < arrayLength(&objects); i += 1u) {
-        switch (objects[i].obj_type) {
-            case OBJECT_SPHERE: {
-                if hit_sphere(objects[i].id, ray, MIN_T, closest_so_far, &tmp_rec) {
-                    hit_anything = true;
-                    closest_so_far = tmp_rec.t;
-                    *intersection = tmp_rec;
-                }
-            }
-            case OBJECT_MESHES: {
-                for (var j = 0u; j < arrayLength(&surfaces); j += 1u) {
-                    if hit_triangle(j, ray, MIN_T, closest_so_far, &tmp_rec) {
-                        hit_anything = true;
-                        closest_so_far = tmp_rec.t;
-                        *intersection = tmp_rec;
-                    }
-                }
-            }
-            default: {
-                // Do nothing
-            }
+        if hit_object(i, ray, MIN_T, closest_so_far, &tmp_rec) {
+            hit_anything = true;
+            closest_so_far = tmp_rec.t;
+            *intersection = tmp_rec;
         }
     }
 
