@@ -168,7 +168,7 @@ pub async fn run() {
         last_time: instant::Instant::now(),
         render_context: RenderContext::new(
             &window,
-            &Scene::cornellius_box(
+            &Scene::cornelus_box_scene(
                 scene::RenderParam {
                     samples_per_pixel: 1,
                     max_depth: 2,

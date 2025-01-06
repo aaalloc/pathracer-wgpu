@@ -156,6 +156,8 @@ struct Camera {
 struct Object {
     id: u32,
     obj_type: u32,
+    // for when object is has multiple meshes
+    count: u32,
 };
 
 const OBJECT_SPHERE = 0u;
@@ -255,6 +257,7 @@ fn sphereIntersection(ray: Ray, sphere: Sphere, t: f32, material_index: u32) -> 
 
 fn hit_triangle(
     triangle_index: u32,
+    material_index: u32,
     ray: Ray,
     ray_min: f32,
     ray_max: f32,
@@ -289,7 +292,7 @@ fn hit_triangle(
     let t = f * dot(e2, q);
     if t > ray_min && t < ray_max {
         let normal = normalize(cross(e1, e2)).xyz;
-        *hit = HitRecord(ray.origin + t * ray.direction, normal, t, triangle_index, true);
+        *hit = HitRecord(ray.origin + t * ray.direction, normal, t, material_index, true);
         return true;
     }
 
@@ -308,7 +311,7 @@ fn hit_object(
             return hit_sphere(object_index, ray, ray_min, ray_max, hit);
         }
         case OBJECT_MESHES: {
-            return hit_triangle(object_index, ray, ray_min, ray_max, hit);
+            return hit_triangle(object_index, objects[object_index].id, ray, ray_min, ray_max, hit);
         }
         default: {
             return false;
@@ -321,11 +324,24 @@ fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool 
     var hit_anything = false;
     var tmp_rec = HitRecord();
 
+    var mesh_offset = 0u;
     for (var i = 0u; i < arrayLength(&objects); i += 1u) {
-        if hit_object(i, ray, MIN_T, closest_so_far, &tmp_rec) {
-            hit_anything = true;
-            closest_so_far = tmp_rec.t;
-            *intersection = tmp_rec;
+        let obj = objects[i];
+        if obj.count > 1u {
+            for (var j = 0u; j < obj.count; j += 1u) {
+                if hit_triangle(mesh_offset + i + j, obj.id, ray, MIN_T, closest_so_far, &tmp_rec) {
+                    hit_anything = true;
+                    closest_so_far = tmp_rec.t;
+                    *intersection = tmp_rec;
+                }
+            }
+            mesh_offset += obj.count - 1u;
+        } else {
+            if hit_object(i, ray, MIN_T, closest_so_far, &tmp_rec) {
+                hit_anything = true;
+                closest_so_far = tmp_rec.t;
+                *intersection = tmp_rec;
+            }
         }
     }
 
@@ -382,7 +398,7 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
             let material = materials[intersection.material_index];
             if material.id == MAT_DIFFUSE_LIGHT {
                 let emitted = texture_look_up(material.desc, 0.5, 0.5);
-                color *= emitted;
+                sky_color += color * emitted;
                 break;
             }
             let scattered = scatter(ray, intersection, material, rngState);
@@ -391,13 +407,14 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
         } else {
             let direction = normalize(ray.direction);
             let a = 0.5 * (direction.y + 1.0);
-            var sky = (1.0 - a) * vec3<f32>(1.0, 1.0, 1.0) + a * vec3<f32>(0.5, 0.7, 1);
+            // var sky = (1.0 - a) * vec3<f32>(1.0, 1.0, 1.0) + a * vec3<f32>(0.5, 0.7, 1);
+            var sky = vec3(0.001);
             sky_color = sky;
             // break;
         }
     }
-    // return color * sky_color;
-    return color * vec3(0.01);
+    return color * sky_color;
+    // return color * vec3(0.01);
 }
 
 

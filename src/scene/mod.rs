@@ -4,7 +4,7 @@ pub use camera::{Camera, CameraController, GpuCamera};
 mod material;
 pub use material::{GpuMaterial, Material, Texture};
 
-use crate::object::{self, Mesh, Object, ObjectType, Sphere};
+use crate::object::{self, rotate, scale, translate, Mesh, Object, ObjectType, Sphere};
 
 #[derive(Clone, Debug)]
 pub struct Scene {
@@ -83,6 +83,9 @@ impl Scene {
         materials.push(Material::Lambertian {
             albedo: Texture::new_from_color(glm::vec3(0.4, 0.2, 0.1)),
         });
+        // materials.push(Material::DiffuseLight {
+        //     emit: Texture::new_from_color(glm::vec3(10.0, 10.0, 10.0)),
+        // });
 
         spheres.push(Sphere::new(glm::vec3(4.0, 1.0, 0.0), 1.0));
         materials.push(Material::Metal {
@@ -102,7 +105,7 @@ impl Scene {
         let objects: Vec<Object> = spheres
             .iter()
             .enumerate()
-            .map(|(i, _)| Object::new(i as u32, object::ObjectType::Sphere))
+            .map(|(i, _)| Object::new(i as u32, object::ObjectType::Sphere, None))
             .collect();
 
         Self {
@@ -111,6 +114,88 @@ impl Scene {
             meshes: vec![Mesh::empty()],
             materials,
             spheres,
+            render_param,
+            frame_data,
+            camera_controller: CameraController::new(4.0, 0.4),
+        }
+    }
+
+    pub fn cornelus_box_scene(render_param: RenderParam, frame_data: FrameData) -> Self {
+        let mut materials = Vec::new();
+        let mut objects = Vec::new();
+        let mut meshes = Vec::new();
+
+        let red = Material::Lambertian {
+            albedo: Texture::new_from_color(glm::vec3(0.65, 0.05, 0.05)),
+        };
+        let white = Material::Lambertian {
+            albedo: Texture::new_from_color(glm::vec3(0.73, 0.73, 0.73)),
+        };
+        let green = Material::Lambertian {
+            albedo: Texture::new_from_color(glm::vec3(0.12, 0.45, 0.15)),
+        };
+        let light = Material::DiffuseLight {
+            emit: Texture::new_from_color(glm::vec3(15.0, 15.0, 15.0)),
+        };
+
+        materials.push(white.clone());
+        materials.push(red);
+        materials.push(green);
+        materials.push(white.clone());
+        materials.push(white.clone());
+        materials.push(light);
+
+        let mut back_wall = Mesh::quad();
+        translate(&mut back_wall, glm::vec3(0.0, 0.0, -0.5));
+        back_wall.iter().for_each(|m| meshes.push(m.clone()));
+        objects.push(Object::new(0, ObjectType::Mesh, Some(2)));
+
+        let mut left_wall = Mesh::quad();
+        rotate(&mut left_wall, 90., glm::vec3(0.0, 1.0, 0.0));
+        translate(&mut left_wall, glm::vec3(-0.5, 0.0, 0.0));
+        left_wall.iter().for_each(|m| meshes.push(m.clone()));
+        objects.push(Object::new(1, ObjectType::Mesh, Some(2)));
+
+        let mut right_wall: Vec<Mesh> = Mesh::quad();
+        rotate(&mut right_wall, 90., glm::vec3(0.0, 1.0, 0.0));
+        translate(&mut right_wall, glm::vec3(0.5, 0.0, 0.0));
+        right_wall.iter().for_each(|m| meshes.push(m.clone()));
+        objects.push(Object::new(2, ObjectType::Mesh, Some(2)));
+
+        let mut ceiling = Mesh::quad();
+        rotate(&mut ceiling, 90., glm::vec3(1.0, 0.0, 0.0));
+        translate(&mut ceiling, glm::vec3(0.0, 0.5, 0.0));
+        ceiling.iter().for_each(|m| meshes.push(m.clone()));
+        objects.push(Object::new(3, ObjectType::Mesh, Some(2)));
+
+        let mut floor = Mesh::quad();
+        rotate(&mut floor, 90., glm::vec3(1.0, 0.0, 0.0));
+        translate(&mut floor, glm::vec3(0.0, -0.5, 0.0));
+        floor.iter().for_each(|m| meshes.push(m.clone()));
+        objects.push(Object::new(4, ObjectType::Mesh, Some(2)));
+
+        let mut ceiling_light = Mesh::quad();
+        rotate(&mut ceiling_light, 90., glm::vec3(1.0, 0.0, 0.0));
+        translate(&mut ceiling_light, glm::vec3(0.0, 1.95, 0.0));
+        scale(&mut ceiling_light, glm::vec3(0.25, 0.25, 0.25));
+        ceiling_light.iter().for_each(|m| meshes.push(m.clone()));
+        objects.push(Object::new(5, ObjectType::Mesh, Some(2)));
+
+        let camera = Camera {
+            eye_pos: glm::vec3(0.0, 0.0, 0.95),
+            eye_dir: glm::vec3(0.0, 0.0, -1.0),
+            up: glm::vec3(0.0, 1.0, 0.0),
+            vfov: 55.0,
+            aperture: 0.0,
+            focus_distance: 10.0,
+        };
+
+        Self {
+            objects,
+            camera,
+            meshes,
+            materials,
+            spheres: vec![Sphere::empty()],
             render_param,
             frame_data,
             camera_controller: CameraController::new(4.0, 0.4),
@@ -138,7 +223,7 @@ impl Scene {
 
         let meshes = Mesh::from_tobj(s);
 
-        objects.push(Object::new(0, ObjectType::Mesh));
+        objects.push(Object::new(0, ObjectType::Mesh, None));
 
         let camera = Camera {
             eye_pos: glm::vec3(0.0, 0.0, 50.0),
@@ -147,87 +232,6 @@ impl Scene {
             vfov: 45.0,
             aperture: 0.0,
             focus_distance: 1.0,
-        };
-
-        Self {
-            objects,
-            camera,
-            meshes,
-            materials,
-            spheres: vec![Sphere::empty()],
-            render_param,
-            frame_data,
-            camera_controller: CameraController::new(4.0, 0.4),
-        }
-    }
-
-    pub fn cornellius_box(render_param: RenderParam, frame_data: FrameData) -> Self {
-        let mut materials = Vec::new();
-        let mut objects = Vec::new();
-        let mut meshes = Vec::new();
-
-        let red = Material::Lambertian {
-            albedo: Texture::new_from_color(glm::vec3(0.65, 0.05, 0.05)),
-        };
-        let white = Material::Lambertian {
-            albedo: Texture::new_from_color(glm::vec3(0.73, 0.73, 0.73)),
-        };
-        let green = Material::Lambertian {
-            albedo: Texture::new_from_color(glm::vec3(0.12, 0.45, 0.15)),
-        };
-        let light = Material::DiffuseLight {
-            emit: Texture::new_from_color(glm::vec3(100.0, 100.0, 100.0)),
-        };
-
-        let left_wall_ = Mesh::left_wall_quad();
-        let right_wall_ = Mesh::right_wall_quad();
-        let ceiling_ = Mesh::ceiling_quad();
-        let floor_ = Mesh::floor_quad();
-        let back_wall_ = Mesh::back_wall_quad();
-        let light_ = Mesh::ceiling_light_quad();
-        meshes.push(left_wall_.0);
-        meshes.push(left_wall_.1);
-        meshes.push(right_wall_.0);
-        meshes.push(right_wall_.1);
-        meshes.push(ceiling_.0);
-        meshes.push(ceiling_.1);
-        meshes.push(floor_.0);
-        meshes.push(floor_.1);
-        meshes.push(back_wall_.0);
-        meshes.push(back_wall_.1);
-        meshes.push(light_.0);
-        meshes.push(light_.1);
-        for i in 0..meshes.len() {
-            objects.push(Object::new(i as u32, ObjectType::Mesh));
-        }
-        materials.push(green.clone());
-        materials.push(green.clone());
-
-        materials.push(red.clone());
-        materials.push(red.clone());
-
-        materials.push(white.clone());
-        materials.push(white.clone());
-
-        materials.push(white.clone());
-        materials.push(white.clone());
-
-        materials.push(white.clone());
-        materials.push(white.clone());
-
-        materials.push(light.clone());
-        materials.push(light.clone());
-
-        // materials.push(green.clone());
-        // materials.push(green.clone());
-
-        let camera = Camera {
-            eye_pos: glm::vec3(0.005863361, -0.1950726, -1.8262501),
-            eye_dir: glm::vec3(0.0, 0.0, 1.0),
-            up: glm::vec3(0.0, 1.0, 0.0),
-            vfov: 40.0,
-            aperture: 0.0,
-            focus_distance: 10.0,
         };
 
         Self {
