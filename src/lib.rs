@@ -170,9 +170,9 @@ pub async fn run() {
             &window,
             &Scene::cornelus_box_scene(
                 scene::RenderParam {
-                    samples_per_pixel: 1000,
+                    samples_per_pixel: 1,
                     max_depth: 2,
-                    samples_max_per_pixel: 1,
+                    samples_max_per_pixel: 1000,
                     total_samples: 0,
                     clear_samples: 0,
                 },

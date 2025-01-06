@@ -291,8 +291,8 @@ fn hit_triangle(
 
     let t = f * dot(e2, q);
     if t > ray_min && t < ray_max {
-        // TODO: problem with normal calculation, need to fix
-        let normal = normalize(cross(e1, e2)).xyz;
+        let b = vec3(1.0 - u - v, u, v);
+        let normal = b.x * surface.normals[0].xyz + b.y * surface.normals[1].xyz + b.z * surface.normals[2].xyz;
         *hit = HitRecord(ray.origin + t * ray.direction, normal, t, material_index, true);
         return true;
     }
