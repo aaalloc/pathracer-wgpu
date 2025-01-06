@@ -191,19 +191,22 @@ impl Scene {
         let mut box1 = Mesh::cube();
         scale(&mut box1, glm::vec3(0.3, 0.3, 0.3));
         rotate(&mut box1, 70., glm::vec3(0.0, 1.0, 0.0));
-        translate(&mut box1, glm::vec3(0.15, -0.45, 0.3));
+        translate(&mut box1, glm::vec3(0.15, -0.395, 0.3));
+        scale(&mut box1, glm::vec3(1.1, 1.1, 1.1));
         box1.iter().for_each(|m| meshes.push(m.clone()));
         objects.push(Object::new(6, ObjectType::Mesh, Some(box1.len())));
 
         let mut rectangle_box = Mesh::cube();
         scale(&mut rectangle_box, glm::vec3(0.3, 0.6, 0.3));
         rotate(&mut rectangle_box, 10., glm::vec3(0.0, 1.0, 0.0));
-        translate(&mut rectangle_box, glm::vec3(-0.15, -0.30, -0.13));
+        translate(&mut rectangle_box, glm::vec3(-0.15, -0.161, -0.08));
+        scale(&mut rectangle_box, glm::vec3(1.3, 1.3, 1.3));
+        rotate(&mut rectangle_box, 5., glm::vec3(0.0, 1.0, 0.0));
         rectangle_box.iter().for_each(|m| meshes.push(m.clone()));
         objects.push(Object::new(7, ObjectType::Mesh, Some(rectangle_box.len())));
 
         let camera = Camera {
-            eye_pos: glm::vec3(0.0, 0.0, 2.5),
+            eye_pos: glm::vec3(0.0, 0.0, 2.9),
             eye_dir: glm::vec3(0.0, 0.0, -1.0),
             up: glm::vec3(0.0, 1.0, 0.0),
             vfov: 30.0,
