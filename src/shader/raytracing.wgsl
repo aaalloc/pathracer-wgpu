@@ -399,18 +399,30 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
     return color_from_emission + color_from_scatter * sky_color;
 }
 
+fn pixar_onb(n: vec3<f32>) -> mat3x3<f32> {
+    // https://www.jcgt.org/published/0006/01/01/paper-lowres.pdf
+    let s = select(-1f, 1f, n.z >= 0f);
+    let a = -1f / (s + n.z);
+    let b = n.x * n.y * a;
+    let u = vec3<f32>(1f + s * n.x * n.x * a, s * b, -s * n.x);
+    let v = vec3<f32>(b, s + n.y * n.y * a, -n.y);
+
+    return mat3x3<f32>(u, v, n);
+}
+
+
 fn scatter(ray: Ray, hit: HitRecord, material: Material, rngState: ptr<function, u32>) -> Scatter {
     switch (material.id) 
     {
         case MAT_LAMBERTIAN: 
         {
-            let t = hit.p + hit.normal + rng_on_hemisphere(rngState, hit.normal);
+            let t = hit.normal + rng_on_hemisphere(rngState, hit.normal);
 
-            if vec3_near_zero(t - hit.p) {
+            if vec3_near_zero(t) {
                 return Scatter(Ray(hit.p, hit.normal), texture_look_up(material.desc, 0.5, 0.5));
             }
 
-            return Scatter(Ray(hit.p, t - hit.p), texture_look_up(material.desc, 0.5, 0.5));
+            return Scatter(Ray(hit.p, t), texture_look_up(material.desc, 0.5, 0.5));
         }
         case MAT_METAL: 
         {
@@ -422,6 +434,7 @@ fn scatter(ray: Ray, hit: HitRecord, material: Material, rngState: ptr<function,
         case MAT_DIELECTRIC: 
         {
             var ri: f32 = material.fuzz;
+            // use select here
             if hit.front_face {
                 ri = 1.0 / material.fuzz;
             }
@@ -496,6 +509,15 @@ fn rng_on_hemisphere(rngState: ptr<function, u32>, normal: vec3<f32>) -> vec3<f3
     }
 }
 
+fn rng_in_cosine_hemisphere(rngState: ptr<function, u32>) -> vec3<f32> {
+    let r1 = rng_next_float(rngState);
+    let r2 = rng_next_float(rngState);
+    let z = sqrt(1.0 - r2);
+    let phi = 2.0 * PI * r1;
+    let x = cos(phi) * sqrt(r2);
+    let y = sin(phi) * sqrt(r2);
+    return vec3(x, y, z);
+}
 
 fn rng_in_unit_sphere(state: ptr<function, u32>) -> vec3<f32> {
     // Generate three random numbers x,y,z using Gaussian distribution
