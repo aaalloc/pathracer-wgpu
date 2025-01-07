@@ -135,7 +135,7 @@ impl Scene {
             albedo: Texture::new_from_color(glm::vec3(0.12, 0.45, 0.15)),
         };
         let light = Material::DiffuseLight {
-            emit: Texture::new_from_color(glm::vec3(25.0, 25.0, 25.0)),
+            emit: Texture::new_from_color(glm::vec3(15.0, 15.0, 15.0)),
         };
 
         materials.push(white.clone());
@@ -183,7 +183,7 @@ impl Scene {
 
         let mut ceiling_light = Mesh::quad();
         rotate(&mut ceiling_light, 90., glm::vec3(1.0, 0.0, 0.0));
-        translate(&mut ceiling_light, glm::vec3(0.0, 1.98, 0.0));
+        translate(&mut ceiling_light, glm::vec3(0.0, 1.995, 0.0));
         scale(&mut ceiling_light, glm::vec3(0.30, 0.30, 0.30));
         ceiling_light.iter().for_each(|m| meshes.push(m.clone()));
         objects.push(Object::new(5, ObjectType::Mesh, Some(2)));
