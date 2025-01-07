@@ -374,7 +374,8 @@ fn get_ray(rngState: ptr<function, u32>, x: f32, y: f32) -> Ray {
 fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
     var ray = first_ray;
     var sky_color = vec3(0.0);
-    var color = vec3(1.0);
+    var color_from_scatter = vec3(1.0);
+    var color_from_emission = vec3(0.0);
 
     for (var i = 0u; i < render_param.max_depth; i += 1u) {
         var intersection = HitRecord();
@@ -382,23 +383,20 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
             let material = materials[intersection.material_index];
             if material.id == MAT_DIFFUSE_LIGHT {
                 let emitted = texture_look_up(material.desc, 0.5, 0.5);
-                sky_color += color * emitted;
+                color_from_emission += color_from_scatter * emitted;
                 break;
             }
             let scattered = scatter(ray, intersection, material, rngState);
-            color *= scattered.attenuation;
+            color_from_scatter *= scattered.attenuation;
             ray = scattered.ray;
         } else {
             let direction = normalize(ray.direction);
             let a = 0.5 * (direction.y + 1.0);
-            // var sky = (1.0 - a) * vec3<f32>(1.0, 1.0, 1.0) + a * vec3<f32>(0.5, 0.7, 1);
-            var sky = vec3(0.001);
-            sky_color = sky;
+            // sky_color = (1.0 - a) * vec3<f32>(1.0, 1.0, 1.0) + a * vec3<f32>(0.5, 0.7, 1);
             // break;
         }
     }
-    return color * sky_color;
-    // return color * vec3(0.01);
+    return color_from_emission + color_from_scatter * sky_color;
 }
 
 fn scatter(ray: Ray, hit: HitRecord, material: Material, rngState: ptr<function, u32>) -> Scatter {
