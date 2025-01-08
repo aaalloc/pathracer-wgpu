@@ -25,7 +25,6 @@ const MAX_T = 1000f;
 @group(1) @binding(1) var<storage, read> spheres: array<Sphere>;
 @group(1) @binding(2) var<storage, read> materials: array<Material>;
 @group(1) @binding(3) var<storage, read> textures: array<array<f32, 3>>;
-// TODO: for now, surfaces will represent a single Mesh
 @group(1) @binding(4) var<storage, read> surfaces: array<Surface>;
 
 
@@ -293,7 +292,8 @@ fn hit_triangle(
     if t > ray_min && t < ray_max {
         let b = vec3(1.0 - u - v, u, v);
         let n = b.x * surface.normals[0].xyz + b.y * surface.normals[1].xyz + b.z * surface.normals[2].xyz;
-        *hit = HitRecord(ray.origin + t * ray.direction, normalize(n), t, material_index, true);
+        let front_face = dot(ray.direction, n) < 0.0;
+        *hit = HitRecord(ray.origin + t * ray.direction, normalize(n), t, material_index, front_face);
         return true;
     }
 
@@ -385,6 +385,10 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
             // sky_color = (1.0 - a) * vec3<f32>(1.0, 1.0, 1.0) + a * vec3<f32>(0.5, 0.7, 1);
             break;
         }
+        // for triangles only
+        // if !intersection.front_face {
+        //     continue;
+        // }
 
         let material = materials[intersection.material_index];
         if material.id == MAT_DIFFUSE_LIGHT {
@@ -392,24 +396,15 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
             color_from_emission += color_from_scatter * emitted;
             break;
         }
+        let scattered = scatter(ray, intersection, material, rngState);
 
-        var pdf = 1.0;
-        let scattered = scatter(ray, intersection, material, rngState, &pdf);
         let scattering_pdf = 1.0 / (2.0 * PI);
-        pdf = scattering_pdf;
+        let pdf = scattering_pdf;
 
         color_from_scatter *= (scattered.attenuation * scattering_pdf) / pdf;
         ray = scattered.ray;
     }
     return color_from_emission + color_from_scatter * sky_color;
-}
-
-fn scattering_pdf_lambda(hit: HitRecord, scattered: Ray) -> f32 {
-    var cosine_theta = dot(hit.normal, normalize(scattered.direction));
-    if cosine_theta < 0.0 {
-        cosine_theta = 0.0;
-    }
-    return cosine_theta * FRAC_1_PI;
 }
 
 struct ONB {
@@ -435,7 +430,6 @@ fn scatter(
     hit: HitRecord,
     material: Material,
     rngState: ptr<function, u32>,
-    pdf: ptr<function, f32>,
 ) -> Scatter {
     switch (material.id) 
     {
@@ -447,7 +441,6 @@ fn scatter(
 
             let scatter = Ray(hit.p, direction);
             let attenuation = texture_look_up(material.desc, 0.5, 0.5);
-            *pdf = dot(onb.w, scatter.direction) * FRAC_1_PI;
             return Scatter(scatter, attenuation);
         }
         case MAT_METAL: 
