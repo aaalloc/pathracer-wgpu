@@ -292,8 +292,8 @@ fn hit_triangle(
     let t = f * dot(e2, q);
     if t > ray_min && t < ray_max {
         let b = vec3(1.0 - u - v, u, v);
-        let normal = b.x * surface.normals[0].xyz + b.y * surface.normals[1].xyz + b.z * surface.normals[2].xyz;
-        *hit = HitRecord(ray.origin + t * ray.direction, normal, t, material_index, true);
+        let n = b.x * surface.normals[0].xyz + b.y * surface.normals[1].xyz + b.z * surface.normals[2].xyz;
+        *hit = HitRecord(ray.origin + t * ray.direction, normalize(n), t, material_index, true);
         return true;
     }
 
@@ -393,11 +393,10 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
             break;
         }
 
-        let scattered = scatter(ray, intersection, material, rngState);
-        // let scattering_pdf = scattering_pdf_lambda(intersection, scattered.ray);
-        let scattering_pdf = 1.0;
-        // var pdf = 1.0 / (2.0 * PI);
         var pdf = 1.0;
+        let scattered = scatter(ray, intersection, material, rngState, &pdf);
+        let scattering_pdf = 1.0 / (2.0 * PI);
+        pdf = scattering_pdf;
 
         color_from_scatter *= (scattered.attenuation * scattering_pdf) / pdf;
         ray = scattered.ray;
@@ -413,7 +412,13 @@ fn scattering_pdf_lambda(hit: HitRecord, scattered: Ray) -> f32 {
     return cosine_theta * FRAC_1_PI;
 }
 
-fn pixar_onb(n: vec3<f32>) -> mat3x3<f32> {
+struct ONB {
+    u: vec3<f32>,
+    v: vec3<f32>,
+    w: vec3<f32>,
+}
+
+fn pixar_onb(n: vec3<f32>) -> ONB {
     // https://www.jcgt.org/published/0006/01/01/paper-lowres.pdf
     let s = select(-1f, 1f, n.z >= 0f);
     let a = -1f / (s + n.z);
@@ -421,7 +426,7 @@ fn pixar_onb(n: vec3<f32>) -> mat3x3<f32> {
     let u = vec3<f32>(1f + s * n.x * n.x * a, s * b, -s * n.x);
     let v = vec3<f32>(b, s + n.y * n.y * a, -n.y);
 
-    return mat3x3<f32>(u, v, n);
+    return ONB(u, v, n);
 }
 
 
@@ -430,18 +435,20 @@ fn scatter(
     hit: HitRecord,
     material: Material,
     rngState: ptr<function, u32>,
+    pdf: ptr<function, f32>,
 ) -> Scatter {
     switch (material.id) 
     {
         case MAT_LAMBERTIAN: 
         {
-            let t = hit.normal + rng_on_hemisphere(rngState, hit.normal);
+            let onb = pixar_onb(hit.normal);
+            let cos_rnd = rng_in_cosine_hemisphere(rngState);
+            let direction = onb.u * cos_rnd.x + onb.v * cos_rnd.y + onb.w * cos_rnd.z;
 
-            if vec3_near_zero(t) {
-                return Scatter(Ray(hit.p, hit.normal), texture_look_up(material.desc, 0.5, 0.5));
-            }
-
-            return Scatter(Ray(hit.p, t), texture_look_up(material.desc, 0.5, 0.5));
+            let scatter = Ray(hit.p, direction);
+            let attenuation = texture_look_up(material.desc, 0.5, 0.5);
+            *pdf = dot(onb.w, scatter.direction) * FRAC_1_PI;
+            return Scatter(scatter, attenuation);
         }
         case MAT_METAL: 
         {
