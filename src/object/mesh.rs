@@ -46,9 +46,9 @@ impl Mesh {
                     glm::vec4(-1.0, 1.0, 0.0, 1.0),
                 ],
                 normals: [
-                    glm::vec4(0.0, 0.0, 1.0, 1.0),
-                    glm::vec4(0.0, 0.0, 1.0, 1.0),
-                    glm::vec4(0.0, 0.0, 1.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.5, 1.0),
+                    glm::vec4(0.0, 0.0, 0.5, 1.0),
+                    glm::vec4(0.0, 0.0, 0.5, 1.0),
                 ],
             },
             Mesh {
@@ -58,9 +58,9 @@ impl Mesh {
                     glm::vec4(-1.0, 1.0, 0.0, 1.0),
                 ],
                 normals: [
-                    glm::vec4(0.0, 0.0, 1.0, 1.0),
-                    glm::vec4(0.0, 0.0, 1.0, 1.0),
-                    glm::vec4(0.0, 0.0, 1.0, 1.0),
+                    glm::vec4(0.0, 0.0, 0.5, 1.0),
+                    glm::vec4(0.0, 0.0, 0.5, 1.0),
+                    glm::vec4(0.0, 0.0, 0.5, 1.0),
                 ],
             },
         ]
@@ -77,7 +77,7 @@ impl Mesh {
         let mut meshes = vec![];
         // Front
         let mut front = Mesh::quad();
-        translate(&mut front, glm::vec3(0.0, 0.0, 0.5));
+        translate(&mut front, glm::vec3(0.0, 0.0, 1.0));
         for v in front.iter_mut() {
             v.normals = [
                 glm::vec4(0.0, 0.0, 1.0, 1.0),
@@ -90,8 +90,7 @@ impl Mesh {
         // Back
         let mut back = Mesh::quad();
         rotate(&mut back, 180.0, glm::vec3(0.0, 1.0, 0.0));
-        translate(&mut back, glm::vec3(0.0, 0.0, -0.5));
-        println!("{:?}", back);
+        translate(&mut back, glm::vec3(0.0, 0.0, -1.0));
         for v in back.iter_mut() {
             v.normals = [
                 glm::vec4(0.0, 0.0, -1.0, 1.0),
@@ -104,7 +103,7 @@ impl Mesh {
         // Top
         let mut top = Mesh::quad();
         rotate(&mut top, 90.0, glm::vec3(1.0, 0.0, 0.0));
-        translate(&mut top, glm::vec3(0.0, 0.5, 0.0));
+        translate(&mut top, glm::vec3(0.0, 1.0, 0.0));
         for v in top.iter_mut() {
             v.normals = [
                 glm::vec4(0.0, 1.0, 0.0, 1.0),
@@ -117,7 +116,7 @@ impl Mesh {
         // Bottom
         let mut bottom = Mesh::quad();
         rotate(&mut bottom, -90.0, glm::vec3(1.0, 0.0, 0.0));
-        translate(&mut bottom, glm::vec3(0.0, -0.5, 0.0));
+        translate(&mut bottom, glm::vec3(0.0, -1.0, 0.0));
         for v in bottom.iter_mut() {
             v.normals = [
                 glm::vec4(0.0, -1.0, 0.0, 1.0),
@@ -130,7 +129,7 @@ impl Mesh {
         // Right
         let mut right = Mesh::quad();
         rotate(&mut right, 90.0, glm::vec3(0.0, 1.0, 0.0));
-        translate(&mut right, glm::vec3(0.5, 0.0, 0.0));
+        translate(&mut right, glm::vec3(1.0, 0.0, 0.0));
         for v in right.iter_mut() {
             v.normals = [
                 glm::vec4(1.0, 0.0, 0.0, 1.0),
@@ -143,7 +142,7 @@ impl Mesh {
         // Left
         let mut left = Mesh::quad();
         rotate(&mut left, -90.0, glm::vec3(0.0, 1.0, 0.0));
-        translate(&mut left, glm::vec3(-0.5, 0.0, 0.0));
+        translate(&mut left, glm::vec3(-1.0, 0.0, 0.0));
         for v in left.iter_mut() {
             v.normals = [
                 glm::vec4(-1.0, 0.0, 0.0, 1.0),

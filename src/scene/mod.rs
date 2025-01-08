@@ -157,9 +157,9 @@ impl Scene {
         translate(&mut left_wall, glm::vec3(-1.0, 0.0, 0.0));
         for v in left_wall.iter_mut() {
             v.normals = [
-                glm::vec4(1.0, 0.0, 0.0, 1.0),
-                glm::vec4(1.0, 0.0, 0.0, 1.0),
-                glm::vec4(1.0, 0.0, 0.0, 1.0),
+                glm::vec4(0.5, 0.0, 0.0, 1.0),
+                glm::vec4(0.5, 0.0, 0.0, 1.0),
+                glm::vec4(0.5, 0.0, 0.0, 1.0),
             ]
         }
         left_wall.iter().for_each(|m| meshes.push(m.clone()));
@@ -168,12 +168,11 @@ impl Scene {
         let mut right_wall: Vec<Mesh> = Mesh::quad();
         rotate(&mut right_wall, 90., glm::vec3(0.0, 1.0, 0.0));
         translate(&mut right_wall, glm::vec3(1.0, 0.0, 0.0));
-        // set normals to zero
         for v in right_wall.iter_mut() {
             v.normals = [
-                glm::vec4(-1.0, 0.0, 0.0, 1.0),
-                glm::vec4(-1.0, 0.0, 0.0, 1.0),
-                glm::vec4(-1.0, 0.0, 0.0, 1.0),
+                glm::vec4(-0.5, 0.0, 0.0, 1.0),
+                glm::vec4(-0.5, 0.0, 0.0, 1.0),
+                glm::vec4(-0.5, 0.0, 0.0, 1.0),
             ]
         }
         right_wall.iter().for_each(|m| meshes.push(m.clone()));
@@ -184,9 +183,9 @@ impl Scene {
         translate(&mut ceiling, glm::vec3(0.0, 1.0, 0.0));
         for v in ceiling.iter_mut() {
             v.normals = [
-                glm::vec4(0.0, -1.0, 0.0, 1.0),
-                glm::vec4(0.0, -1.0, 0.0, 1.0),
-                glm::vec4(0.0, -1.0, 0.0, 1.0),
+                glm::vec4(0.0, -0.5, 0.0, 1.0),
+                glm::vec4(0.0, -0.5, 0.0, 1.0),
+                glm::vec4(0.0, -0.5, 0.0, 1.0),
             ]
         }
         ceiling.iter().for_each(|m| meshes.push(m.clone()));
@@ -197,9 +196,9 @@ impl Scene {
         translate(&mut floor, glm::vec3(0.0, -1.0, 0.0));
         for v in floor.iter_mut() {
             v.normals = [
-                glm::vec4(0.0, 1.0, 0.0, 1.0),
-                glm::vec4(0.0, 1.0, 0.0, 1.0),
-                glm::vec4(0.0, 1.0, 0.0, 1.0),
+                glm::vec4(0.0, 0.5, 0.0, 1.0),
+                glm::vec4(0.0, 0.5, 0.0, 1.0),
+                glm::vec4(0.0, 0.5, 0.0, 1.0),
             ]
         }
         floor.iter().for_each(|m| meshes.push(m.clone()));
@@ -208,27 +207,31 @@ impl Scene {
         let mut ceiling_light = Mesh::quad();
         rotate(&mut ceiling_light, 90., glm::vec3(1.0, 0.0, 0.0));
         translate(&mut ceiling_light, glm::vec3(0.0, 0.99, 0.));
-        scale(&mut ceiling_light, glm::vec3(0.30, 1.0, 0.3));
-
+        scale(&mut ceiling_light, glm::vec3(0.20, 1.0, 0.2));
+        for v in ceiling_light.iter_mut() {
+            v.normals = [
+                glm::vec4(0.0, -0.5, 0.0, 1.0),
+                glm::vec4(0.0, -0.5, 0.0, 1.0),
+                glm::vec4(0.0, -0.5, 0.0, 1.0),
+            ]
+        }
         ceiling_light.iter().for_each(|m| meshes.push(m.clone()));
         objects.push(Object::new(5, ObjectType::Mesh, Some(2)));
 
-        // let mut box1 = Mesh::cube();
-        // scale(&mut box1, glm::vec3(0.3, 0.3, 0.3));
-        // rotate(&mut box1, 70., glm::vec3(0.0, 1.0, 0.0));
-        // translate(&mut box1, glm::vec3(0.15, -0.395, 0.3));
-        // scale(&mut box1, glm::vec3(1.1, 1.1, 1.1));
-        // box1.iter().for_each(|m| meshes.push(m.clone()));
-        // objects.push(Object::new(6, ObjectType::Mesh, Some(box1.len())));
+        let mut box1 = Mesh::cube();
+        scale(&mut box1, glm::vec3(0.3, 0.3, 0.3));
+        rotate(&mut box1, 70., glm::vec3(0.0, 1.0, 0.0));
+        translate(&mut box1, glm::vec3(0.3, -0.699, 0.3));
+        box1.iter().for_each(|m| meshes.push(m.clone()));
+        objects.push(Object::new(6, ObjectType::Mesh, Some(box1.len())));
 
-        // let mut rectangle_box = Mesh::cube();
-        // scale(&mut rectangle_box, glm::vec3(0.3, 0.6, 0.3));
-        // rotate(&mut rectangle_box, 10., glm::vec3(0.0, 1.0, 0.0));
-        // translate(&mut rectangle_box, glm::vec3(-0.15, -0.161, -0.08));
-        // scale(&mut rectangle_box, glm::vec3(1.3, 1.3, 1.3));
-        // rotate(&mut rectangle_box, 5., glm::vec3(0.0, 1.0, 0.0));
-        // rectangle_box.iter().for_each(|m| meshes.push(m.clone()));
-        // objects.push(Object::new(7, ObjectType::Mesh, Some(rectangle_box.len())));
+        let mut rectangle_box = Mesh::cube();
+        scale(&mut rectangle_box, glm::vec3(0.3, 0.6, 0.3));
+        rotate(&mut rectangle_box, 20., glm::vec3(0.0, 1.0, 0.0));
+        translate(&mut rectangle_box, glm::vec3(-0.4, -0.399, -0.2));
+
+        rectangle_box.iter().for_each(|m| meshes.push(m.clone()));
+        objects.push(Object::new(7, ObjectType::Mesh, Some(rectangle_box.len())));
 
         let camera = Camera {
             eye_pos: glm::vec3(0.0, 0.0, 5.),
