@@ -379,24 +379,38 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
 
     for (var i = 0u; i < render_param.max_depth; i += 1u) {
         var intersection = HitRecord();
-        if check_intersection(ray, &intersection) {
-            let material = materials[intersection.material_index];
-            if material.id == MAT_DIFFUSE_LIGHT {
-                let emitted = texture_look_up(material.desc, 0.5, 0.5);
-                color_from_emission += color_from_scatter * emitted;
-                break;
-            }
-            let scattered = scatter(ray, intersection, material, rngState);
-            color_from_scatter *= scattered.attenuation;
-            ray = scattered.ray;
-        } else {
+        if !check_intersection(ray, &intersection) {
             let direction = normalize(ray.direction);
             let a = 0.5 * (direction.y + 1.0);
             // sky_color = (1.0 - a) * vec3<f32>(1.0, 1.0, 1.0) + a * vec3<f32>(0.5, 0.7, 1);
-            // break;
+            break;
         }
+
+        let material = materials[intersection.material_index];
+        if material.id == MAT_DIFFUSE_LIGHT {
+            let emitted = texture_look_up(material.desc, 0.5, 0.5);
+            color_from_emission += color_from_scatter * emitted;
+            break;
+        }
+
+        let scattered = scatter(ray, intersection, material, rngState);
+        // let scattering_pdf = scattering_pdf_lambda(intersection, scattered.ray);
+        let scattering_pdf = 1.0;
+        // var pdf = 1.0 / (2.0 * PI);
+        var pdf = 1.0;
+
+        color_from_scatter *= (scattered.attenuation * scattering_pdf) / pdf;
+        ray = scattered.ray;
     }
     return color_from_emission + color_from_scatter * sky_color;
+}
+
+fn scattering_pdf_lambda(hit: HitRecord, scattered: Ray) -> f32 {
+    var cosine_theta = dot(hit.normal, normalize(scattered.direction));
+    if cosine_theta < 0.0 {
+        cosine_theta = 0.0;
+    }
+    return cosine_theta * FRAC_1_PI;
 }
 
 fn pixar_onb(n: vec3<f32>) -> mat3x3<f32> {
@@ -411,7 +425,12 @@ fn pixar_onb(n: vec3<f32>) -> mat3x3<f32> {
 }
 
 
-fn scatter(ray: Ray, hit: HitRecord, material: Material, rngState: ptr<function, u32>) -> Scatter {
+fn scatter(
+    ray: Ray,
+    hit: HitRecord,
+    material: Material,
+    rngState: ptr<function, u32>,
+) -> Scatter {
     switch (material.id) 
     {
         case MAT_LAMBERTIAN: 
