@@ -227,8 +227,8 @@ impl Scene {
 
         let mut rectangle_box = Mesh::cube();
         scale(&mut rectangle_box, glm::vec3(0.3, 0.6, 0.3));
-        rotate(&mut rectangle_box, 20., glm::vec3(0.0, 1.0, 0.0));
-        translate(&mut rectangle_box, glm::vec3(-0.4, -0.399, -0.2));
+        rotate(&mut rectangle_box, 15., glm::vec3(0.0, 1.0, 0.0));
+        translate(&mut rectangle_box, glm::vec3(-0.3, -0.399, -0.2));
 
         rectangle_box.iter().for_each(|m| meshes.push(m.clone()));
         objects.push(Object::new(7, ObjectType::Mesh, Some(rectangle_box.len())));
