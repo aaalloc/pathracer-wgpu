@@ -275,7 +275,7 @@ impl Scene {
 
         let meshes = Mesh::from_tobj(s);
 
-        objects.push(Object::new(0, ObjectType::Mesh, None));
+        objects.push(Object::new(0, ObjectType::Mesh, Some(meshes.len())));
 
         let camera = Camera {
             eye_pos: glm::vec3(0.0, 0.0, 50.0),

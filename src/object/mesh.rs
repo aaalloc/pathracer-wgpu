@@ -164,13 +164,24 @@ impl Mesh {
             .chunks(3)
             .map(|c| glm::vec4(c[0], c[1], c[2], 0.0))
             .collect::<Vec<_>>();
+
+        let normals = mesh
+            .normals
+            .chunks(3)
+            .map(|c| glm::vec4(c[0], c[1], c[2], 0.0))
+            .collect::<Vec<_>>();
+
         let indices = mesh.indices.chunks(3).map(|c| Mesh {
             vertices: [
                 vertices[c[0] as usize],
                 vertices[c[1] as usize],
                 vertices[c[2] as usize],
             ],
-            normals: [glm::vec4(0.0, 0.0, 0.0, 0.0); 3],
+            normals: [
+                normals[c[0] as usize],
+                normals[c[1] as usize],
+                normals[c[2] as usize],
+            ],
         });
         indices.collect()
     }
