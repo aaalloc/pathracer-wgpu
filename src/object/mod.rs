@@ -2,7 +2,7 @@ mod sphere;
 pub use sphere::Sphere;
 
 mod mesh;
-pub use mesh::{area, center_surface, rotate, scale, translate, Mesh};
+pub use mesh::*;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable, PartialEq)]

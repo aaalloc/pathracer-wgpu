@@ -398,7 +398,15 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
         if !scatter(&scattered, ray, intersection, material, rngState, &pdf) {
             break;
         }
+        scattered = Scatter(
+            Ray(
+                intersection.p,
+                pdf_light_generate(rngState, scattered.ray.origin)
+            ),
+            scattered.attenuation
+        );
 
+        pdf = pdf_light_value(intersection.p, scattered.ray.direction);
         let scattering_pdf = scattering_pdf_lambertian(intersection.normal, scattered.ray.direction);
 
         color_from_scatter *= (scattered.attenuation * scattering_pdf) / pdf;
@@ -623,6 +631,31 @@ fn pdf_cosine_value(direction: vec3<f32>, onb: ONB) -> f32 {
 fn pdf_cosine_generate(state: ptr<function, u32>, onb: ONB) -> vec3<f32> {
     let rnd_direction = rng_in_cosine_hemisphere(state);
     return onb.u * rnd_direction.x + onb.v * rnd_direction.y + onb.w * rnd_direction.z;
+}
+
+fn pdf_light_generate(state: ptr<function, u32>, origin: vec3<f32>) -> vec3<f32> {
+    let p = vec3(
+        rng_next_float_bounded(state, -0.2, 0.2),
+        0.99,
+        rng_next_float_bounded(state, -0.2, 0.2)
+    );
+    return p - origin;
+}
+
+fn pdf_light_value(origin: vec3<f32>, direction: vec3<f32>) -> f32 {
+    let area = 0.16; // hard coded for now
+    var hit = HitRecord();
+    if !check_intersection(Ray(origin, direction), &hit) {
+        return 0.0;
+    }
+
+    // due to hit.t², when object intersects a little bit with another one
+    // white thin array appears
+    // let distance_squared = hit.t * hit.t * length(direction * direction);
+    let distance_squared = length(direction * direction);
+    let cosine = abs(dot(direction, hit.normal) / length(direction));
+
+    return distance_squared / (cosine * area);
 }
 
 const PDF_SPHERE = 0u;

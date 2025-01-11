@@ -137,7 +137,7 @@ impl Scene {
             albedo: Texture::new_from_color(glm::vec3(0.12, 0.45, 0.15)),
         };
         let light = Material::DiffuseLight {
-            emit: Texture::new_from_color(glm::vec3(10.0, 10.0, 10.0)),
+            emit: Texture::new_from_color(glm::vec3(15.0, 15.0, 15.0)),
         };
 
         materials.push(white.clone());
@@ -234,9 +234,6 @@ impl Scene {
 
         rectangle_box.iter().for_each(|m| meshes.push(m.clone()));
         objects.push(Object::new(7, ObjectType::Mesh, Some(rectangle_box.len())));
-
-        println!("Light surface center: {:?}", center_surface(&ceiling_light));
-        println!("Light area: {:?}", area(&ceiling_light));
 
         let camera = Camera {
             eye_pos: glm::vec3(0.0, 0.0, 5.),
