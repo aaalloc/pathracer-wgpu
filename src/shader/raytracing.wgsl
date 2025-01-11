@@ -25,7 +25,6 @@ const MAX_T = 1000f;
 @group(1) @binding(1) var<storage, read> spheres: array<Sphere>;
 @group(1) @binding(2) var<storage, read> materials: array<Material>;
 @group(1) @binding(3) var<storage, read> textures: array<array<f32, 3>>;
-// TODO: for now, surfaces will represent a single Mesh
 @group(1) @binding(4) var<storage, read> surfaces: array<Surface>;
 
 
@@ -156,6 +155,8 @@ struct Camera {
 struct Object {
     id: u32,
     obj_type: u32,
+    // for when object is has multiple meshes
+    count: u32,
 };
 
 const OBJECT_SPHERE = 0u;
@@ -180,6 +181,7 @@ struct Surface {
 const MAT_LAMBERTIAN = 0u;
 const MAT_METAL = 1u;
 const MAT_DIELECTRIC = 2u;
+const MAT_DIFFUSE_LIGHT = 3u;
 
 struct Material {
     id: u32,
@@ -254,6 +256,7 @@ fn sphereIntersection(ray: Ray, sphere: Sphere, t: f32, material_index: u32) -> 
 
 fn hit_triangle(
     triangle_index: u32,
+    material_index: u32,
     ray: Ray,
     ray_min: f32,
     ray_max: f32,
@@ -287,12 +290,34 @@ fn hit_triangle(
 
     let t = f * dot(e2, q);
     if t > ray_min && t < ray_max {
-        let normal = normalize(cross(e1, e2)).xyz;
-        *hit = HitRecord(ray.origin + t * ray.direction, normal, t, 0u, true);
+        let b = vec3(1.0 - u - v, u, v);
+        let n = b.x * surface.normals[0].xyz + b.y * surface.normals[1].xyz + b.z * surface.normals[2].xyz;
+        let front_face = dot(ray.direction, n) < 0.0;
+        *hit = HitRecord(ray.origin + t * ray.direction, normalize(n), t, material_index, front_face);
         return true;
     }
 
     return false;
+}
+
+fn hit_object(
+    object_index: u32,
+    ray: Ray,
+    ray_min: f32,
+    ray_max: f32,
+    hit: ptr<function, HitRecord>,
+) -> bool {
+    switch objects[object_index].obj_type {
+        case OBJECT_SPHERE: {
+            return hit_sphere(object_index, ray, ray_min, ray_max, hit);
+        }
+        case OBJECT_MESHES: {
+            return hit_triangle(object_index, objects[object_index].id, ray, ray_min, ray_max, hit);
+        }
+        default: {
+            return false;
+        }
+    }
 }
 
 fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool {
@@ -300,26 +325,23 @@ fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool 
     var hit_anything = false;
     var tmp_rec = HitRecord();
 
+    var mesh_offset = 0u;
     for (var i = 0u; i < arrayLength(&objects); i += 1u) {
-        switch (objects[i].obj_type) {
-            case OBJECT_SPHERE: {
-                if hit_sphere(objects[i].id, ray, MIN_T, closest_so_far, &tmp_rec) {
+        let obj = objects[i];
+        if obj.count > 1u {
+            for (var j = 0u; j < obj.count; j += 1u) {
+                if hit_triangle(mesh_offset + i + j, obj.id, ray, MIN_T, closest_so_far, &tmp_rec) {
                     hit_anything = true;
                     closest_so_far = tmp_rec.t;
                     *intersection = tmp_rec;
                 }
             }
-            case OBJECT_MESHES: {
-                for (var j = 0u; j < arrayLength(&surfaces); j += 1u) {
-                    if hit_triangle(j, ray, MIN_T, closest_so_far, &tmp_rec) {
-                        hit_anything = true;
-                        closest_so_far = tmp_rec.t;
-                        *intersection = tmp_rec;
-                    }
-                }
-            }
-            default: {
-                // Do nothing
+            mesh_offset += obj.count - 1u;
+        } else {
+            if hit_object(i, ray, MIN_T, closest_so_far, &tmp_rec) {
+                hit_anything = true;
+                closest_so_far = tmp_rec.t;
+                *intersection = tmp_rec;
             }
         }
     }
@@ -349,60 +371,77 @@ fn get_ray(rngState: ptr<function, u32>, x: f32, y: f32) -> Ray {
 }
 
 
-
-// pub fn from_linear_rgb(c: [f32; 3]) -> Color {
-//     let f = |x: f32| -> u32 {
-//         let y = if x > 0.0031308 {
-//             let a = 0.055;
-//             (1.0 + a) * x.powf(-2.4) - a
-//         } else {
-//             12.92 * x
-//         };
-//         (y * 255.0).round() as u32
-//     };
-//     f(c[0]) << 16 | f(c[1]) << 8 | f(c[2])
-// }
-
-
-
-
 fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
     var ray = first_ray;
     var sky_color = vec3(0.0);
-    var color = vec3(1.0);
+    var color_from_scatter = vec3(1.0);
+    var color_from_emission = vec3(0.0);
 
     for (var i = 0u; i < render_param.max_depth; i += 1u) {
         var intersection = HitRecord();
-        if check_intersection(ray, &intersection) {
-            let material = materials[intersection.material_index];
-            let scattered = scatter(ray, intersection, material, rngState);
-            color *= scattered.attenuation;
-            ray = scattered.ray;
-        } else {
+        if !check_intersection(ray, &intersection) {
             let direction = normalize(ray.direction);
             let a = 0.5 * (direction.y + 1.0);
-            var sky = (1.0 - a) * vec3<f32>(1.0, 1.0, 1.0) + a * vec3<f32>(0.5, 0.7, 1);
-            sky_color = sky;
-            // break;
+            // sky_color = (1.0 - a) * vec3<f32>(1.0, 1.0, 1.0) + a * vec3<f32>(0.5, 0.7, 1);
+            break;
         }
+        // for triangles only
+        // if !intersection.front_face {
+        //     continue;
+        // }
+
+        let material = materials[intersection.material_index];
+        if material.id == MAT_DIFFUSE_LIGHT {
+            let emitted = texture_look_up(material.desc, 0.5, 0.5);
+            color_from_emission += color_from_scatter * emitted;
+            break;
+        }
+        let scattered = scatter(ray, intersection, material, rngState);
+
+        let scattering_pdf = 1.0 / (2.0 * PI);
+        let pdf = scattering_pdf;
+
+        color_from_scatter *= (scattered.attenuation * scattering_pdf) / pdf;
+        ray = scattered.ray;
     }
-    return color * sky_color;
+    return color_from_emission + color_from_scatter * sky_color;
+}
+
+struct ONB {
+    u: vec3<f32>,
+    v: vec3<f32>,
+    w: vec3<f32>,
+}
+
+fn pixar_onb(n: vec3<f32>) -> ONB {
+    // https://www.jcgt.org/published/0006/01/01/paper-lowres.pdf
+    let s = select(-1f, 1f, n.z >= 0f);
+    let a = -1f / (s + n.z);
+    let b = n.x * n.y * a;
+    let u = vec3<f32>(1f + s * n.x * n.x * a, s * b, -s * n.x);
+    let v = vec3<f32>(b, s + n.y * n.y * a, -n.y);
+
+    return ONB(u, v, n);
 }
 
 
-
-fn scatter(ray: Ray, hit: HitRecord, material: Material, rngState: ptr<function, u32>) -> Scatter {
+fn scatter(
+    ray: Ray,
+    hit: HitRecord,
+    material: Material,
+    rngState: ptr<function, u32>,
+) -> Scatter {
     switch (material.id) 
     {
         case MAT_LAMBERTIAN: 
         {
-            let t = hit.p + hit.normal + rng_on_hemisphere(rngState, hit.normal);
+            let onb = pixar_onb(hit.normal);
+            let cos_rnd = rng_in_cosine_hemisphere(rngState);
+            let direction = onb.u * cos_rnd.x + onb.v * cos_rnd.y + onb.w * cos_rnd.z;
 
-            if vec3_near_zero(t - hit.p) {
-                return Scatter(Ray(hit.p, hit.normal), texture_look_up(material.desc, 0.5, 0.5));
-            }
-
-            return Scatter(Ray(hit.p, t - hit.p), texture_look_up(material.desc, 0.5, 0.5));
+            let scatter = Ray(hit.p, direction);
+            let attenuation = texture_look_up(material.desc, 0.5, 0.5);
+            return Scatter(scatter, attenuation);
         }
         case MAT_METAL: 
         {
@@ -414,6 +453,7 @@ fn scatter(ray: Ray, hit: HitRecord, material: Material, rngState: ptr<function,
         case MAT_DIELECTRIC: 
         {
             var ri: f32 = material.fuzz;
+            // use select here
             if hit.front_face {
                 ri = 1.0 / material.fuzz;
             }
@@ -488,6 +528,15 @@ fn rng_on_hemisphere(rngState: ptr<function, u32>, normal: vec3<f32>) -> vec3<f3
     }
 }
 
+fn rng_in_cosine_hemisphere(rngState: ptr<function, u32>) -> vec3<f32> {
+    let r1 = rng_next_float(rngState);
+    let r2 = rng_next_float(rngState);
+    let z = sqrt(1.0 - r2);
+    let phi = 2.0 * PI * r1;
+    let x = cos(phi) * sqrt(r2);
+    let y = sin(phi) * sqrt(r2);
+    return vec3(x, y, z);
+}
 
 fn rng_in_unit_sphere(state: ptr<function, u32>) -> vec3<f32> {
     // Generate three random numbers x,y,z using Gaussian distribution

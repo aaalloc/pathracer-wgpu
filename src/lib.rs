@@ -157,8 +157,8 @@ fn init(
 pub async fn run() {
     info!("Starting up");
     let scale = 2.2;
-    let width = 900 * scale as u32;
-    let height = 450 * scale as u32;
+    let width = 500 * scale as u32;
+    let height = 550 * scale as u32;
     let (window, event_loop) = init(width, height);
 
     let mut state = State {
@@ -168,11 +168,11 @@ pub async fn run() {
         last_time: instant::Instant::now(),
         render_context: RenderContext::new(
             &window,
-            &Scene::teapot_scene(
+            &Scene::cornell_scene(
                 scene::RenderParam {
                     samples_per_pixel: 1,
-                    max_depth: 2,
-                    samples_max_per_pixel: 1,
+                    max_depth: 30,
+                    samples_max_per_pixel: 1000,
                     total_samples: 0,
                     clear_samples: 0,
                 },
