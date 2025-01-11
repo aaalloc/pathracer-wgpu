@@ -390,9 +390,9 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
             break;
         }
         // for triangles only
-        // if !intersection.front_face {
-        //     continue;
-        // }
+        if !intersection.front_face {
+            continue;
+        }
 
         let material = materials[intersection.material_index];
         color_from_emission += color_from_scatter * emitted(material, 0.5, 0.5, intersection);
@@ -645,7 +645,7 @@ fn pdf_sphere_generate(state: ptr<function, u32>) -> vec3<f32> {
 
 fn pdf_cosine_value(direction: vec3<f32>, onb: ONB) -> f32 {
     let cosine_theta = dot(normalize(direction), onb.w);
-    return max(cosine_theta, 0.0) / PI;
+    return max(cosine_theta / PI, 0.0);
 }
 
 fn pdf_cosine_generate(state: ptr<function, u32>, onb: ONB) -> vec3<f32> {
@@ -654,6 +654,7 @@ fn pdf_cosine_generate(state: ptr<function, u32>, onb: ONB) -> vec3<f32> {
 }
 
 fn pdf_light_generate(state: ptr<function, u32>, origin: vec3<f32>) -> vec3<f32> {
+    // TODO: this hardcoded because light is present at y = 0.99, need to fix 
     let p = vec3(
         rng_next_float_bounded(state, -0.2, 0.2),
         0.99,
@@ -669,7 +670,8 @@ fn pdf_light_value(origin: vec3<f32>, direction: vec3<f32>) -> f32 {
         return 0.0;
     }
 
-    let distance_squared = hit.t * hit.t * length(direction * direction);
+    // TODO: something fishy is happening here, fix it 
+    let distance_squared = hit.t * hit.t * hit.t * length(direction);
     let cosine = abs(dot(direction, hit.normal) / length(direction));
 
     return distance_squared / (cosine * area);

@@ -285,10 +285,10 @@ impl Scene {
         objects.push(Object::new(0, ObjectType::Mesh, Some(meshes.len())));
 
         let camera = Camera {
-            eye_pos: glm::vec3(0.0, 0.0, 50.0),
+            eye_pos: glm::vec3(0.0, 0.0, 6.6),
             eye_dir: glm::vec3(0.0, 0.0, -1.0),
             up: glm::vec3(0.0, 1.0, 0.0),
-            vfov: 45.0,
+            vfov: 20.0,
             aperture: 0.0,
             focus_distance: 1.0,
         };
