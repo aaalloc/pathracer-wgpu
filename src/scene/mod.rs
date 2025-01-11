@@ -4,7 +4,9 @@ pub use camera::{Camera, CameraController, GpuCamera};
 mod material;
 pub use material::{GpuMaterial, Material, Texture};
 
-use crate::object::{self, rotate, scale, translate, Mesh, Object, ObjectType, Sphere};
+use crate::object::{
+    self, area, center_surface, rotate, scale, translate, Mesh, Object, ObjectType, Sphere,
+};
 
 #[derive(Clone, Debug)]
 pub struct Scene {
@@ -232,6 +234,9 @@ impl Scene {
 
         rectangle_box.iter().for_each(|m| meshes.push(m.clone()));
         objects.push(Object::new(7, ObjectType::Mesh, Some(rectangle_box.len())));
+
+        println!("Light surface center: {:?}", center_surface(&ceiling_light));
+        println!("Light area: {:?}", area(&ceiling_light));
 
         let camera = Camera {
             eye_pos: glm::vec3(0.0, 0.0, 5.),
