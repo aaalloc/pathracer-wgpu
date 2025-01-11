@@ -398,15 +398,19 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
         if !scatter(&scattered, ray, intersection, material, rngState, &pdf) {
             break;
         }
-        scattered = Scatter(
-            Ray(
-                intersection.p,
-                pdf_light_generate(rngState, scattered.ray.origin)
-            ),
-            scattered.attenuation
+
+        scattered.ray.direction = select(
+            pdf_cosine_generate(rngState, pixar_onb(intersection.normal)),
+            pdf_light_generate(rngState, intersection.p),
+            rng_next_float(rngState) < 0.5
         );
 
-        pdf = pdf_light_value(intersection.p, scattered.ray.direction);
+        pdf = pdf_mixed_value(
+            pdf_cosine_value(scattered.ray.direction, pixar_onb(intersection.normal)),
+            pdf_light_value(intersection.p, scattered.ray.direction)
+        );
+
+
         let scattering_pdf = scattering_pdf_lambertian(intersection.normal, scattered.ray.direction);
 
         color_from_scatter *= (scattered.attenuation * scattering_pdf) / pdf;
@@ -460,13 +464,13 @@ fn scatter(
         case MAT_LAMBERTIAN:
         {
             let onb = pixar_onb(hit.normal);
-            let cos_rnd = rng_in_cosine_hemisphere(rngState);
-            let direction = onb.u * cos_rnd.x + onb.v * cos_rnd.y + onb.w * cos_rnd.z;
+            let direction = pdf_cosine_generate(rngState, onb);
 
-            let scatter = Ray(hit.p, direction);
-            let attenuation = texture_look_up(material.desc, 0.5, 0.5);
             *pdf = pdf_cosine_value(direction, onb);
-            *s = Scatter(scatter, attenuation);
+            *s = Scatter(
+                Ray(hit.p, direction),
+                texture_look_up(material.desc, 0.5, 0.5)
+            );
         }
         case MAT_METAL: 
         {
@@ -508,7 +512,8 @@ fn scatter(
 }
 
 fn scattering_pdf_lambertian(normal: vec3<f32>, direction: vec3<f32>) -> f32 {
-    return 1.0 / (2.0 * PI);
+    let cos_theta = dot(normalize(direction), normal);
+    return select(0.0, cos_theta / PI, cos_theta > 0.0);
 }
 
 fn vec3_near_zero(v: vec3<f32>) -> bool {
@@ -643,19 +648,20 @@ fn pdf_light_generate(state: ptr<function, u32>, origin: vec3<f32>) -> vec3<f32>
 }
 
 fn pdf_light_value(origin: vec3<f32>, direction: vec3<f32>) -> f32 {
-    let area = 0.16; // hard coded for now
+    let area = 0.26; // hard coded for now
     var hit = HitRecord();
     if !check_intersection(Ray(origin, direction), &hit) {
         return 0.0;
     }
 
-    // due to hit.t², when object intersects a little bit with another one
-    // white thin array appears
-    // let distance_squared = hit.t * hit.t * length(direction * direction);
-    let distance_squared = length(direction * direction);
+    let distance_squared = hit.t * hit.t * length(direction * direction);
     let cosine = abs(dot(direction, hit.normal) / length(direction));
 
     return distance_squared / (cosine * area);
+}
+
+fn pdf_mixed_value(value1: f32, value2: f32) -> f32 {
+    return max(EPSILON, (0.5 * value1) + (0.5 * value2));
 }
 
 const PDF_SPHERE = 0u;
