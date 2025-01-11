@@ -140,6 +140,11 @@ impl Scene {
             emit: Texture::new_from_color(glm::vec3(15.0, 15.0, 15.0)),
         };
 
+        let metal = Material::Metal {
+            albedo: Texture::new_from_color(glm::vec3(0.8, 0.85, 0.88)),
+            fuzz: 0.0,
+        };
+
         materials.push(white.clone());
         materials.push(green);
         materials.push(red);
@@ -147,7 +152,7 @@ impl Scene {
         materials.push(white.clone());
         materials.push(light);
         materials.push(white.clone());
-        materials.push(white.clone());
+        materials.push(metal);
 
         let mut back_wall = Mesh::quad();
         translate(&mut back_wall, glm::vec3(0.0, 0.0, -1.0));

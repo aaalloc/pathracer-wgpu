@@ -207,7 +207,11 @@ struct HitRecord {
 struct Scatter {
     ray: Ray,
     attenuation: vec3<f32>,
+    type_pdf: u32,
 }
+
+const PDF_NONE = 0u;
+const PDF_COSINE = 1u;
 
 fn hit_sphere(
     sphere_index: u32,
@@ -393,20 +397,24 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
         let material = materials[intersection.material_index];
         color_from_emission += color_from_scatter * emitted(material, 0.5, 0.5, intersection);
 
-        var scattered = Scatter(Ray(vec3(0.0), vec3(0.0)), vec3(0.0));
-        var pdf = 1.0;
-        if !scatter(&scattered, ray, intersection, material, rngState, &pdf) {
+        var scattered = Scatter();
+        if !scatter(&scattered, ray, intersection, material, rngState) {
             break;
         }
+        if scattered.type_pdf == PDF_NONE {
+            color_from_scatter *= scattered.attenuation;
+            ray = scattered.ray;
+            continue;
+        }
 
-        scattered.ray.direction = select(
-            pdf_cosine_generate(rngState, pixar_onb(intersection.normal)),
-            pdf_light_generate(rngState, intersection.p),
-            rng_next_float(rngState) < 0.5
-        );
+        scattered.ray.direction = pdf_generate(rngState, intersection);
 
-        pdf = pdf_mixed_value(
-            pdf_cosine_value(scattered.ray.direction, pixar_onb(intersection.normal)),
+        let pdf = pdf_mixed_value(
+            pdf_value(
+                scattered.type_pdf,
+                scattered.ray.direction,
+                pixar_onb(intersection.normal)
+            ),
             pdf_light_value(intersection.p, scattered.ray.direction)
         );
 
@@ -418,6 +426,8 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
     }
     return color_from_emission + color_from_scatter * sky_color;
 }
+
+
 
 struct ONB {
     u: vec3<f32>,
@@ -457,7 +467,6 @@ fn scatter(
     hit: HitRecord,
     material: Material,
     rngState: ptr<function, u32>,
-    pdf: ptr<function, f32>,
 ) -> bool {
     switch (material.id) 
     {
@@ -466,10 +475,10 @@ fn scatter(
             let onb = pixar_onb(hit.normal);
             let direction = pdf_cosine_generate(rngState, onb);
 
-            *pdf = pdf_cosine_value(direction, onb);
             *s = Scatter(
                 Ray(hit.p, direction),
-                texture_look_up(material.desc, 0.5, 0.5)
+                texture_look_up(material.desc, 0.5, 0.5),
+                PDF_COSINE
             );
         }
         case MAT_METAL: 
@@ -477,7 +486,10 @@ fn scatter(
             let reflected = reflect(normalize(ray.direction), hit.normal);
             let fuzz = material.fuzz;
             let direction = reflected + fuzz * rng_in_unit_sphere(rngState);
-            *s = Scatter(Ray(hit.p, direction), texture_look_up(material.desc, 0.5, 0.5));
+            *s = Scatter(
+                Ray(hit.p, direction),
+                texture_look_up(material.desc, 0.5, 0.5), PDF_NONE
+            );
         }
         case MAT_DIELECTRIC: 
         {
@@ -498,7 +510,10 @@ fn scatter(
             } else {
                 direction = refract(unit_direction, hit.normal, ri);
             }
-            *s = Scatter(Ray(hit.p, direction), vec3(1.0));
+            *s = Scatter(
+                Ray(hit.p, direction),
+                vec3(1.0), PDF_NONE
+            );
         }
         case MAT_DIFFUSE_LIGHT: 
         {
@@ -664,33 +679,29 @@ fn pdf_mixed_value(value1: f32, value2: f32) -> f32 {
     return max(EPSILON, (0.5 * value1) + (0.5 * value2));
 }
 
-const PDF_SPHERE = 0u;
-const PDF_COSINE = 1u;
+
+fn pdf_generate(
+    rngState: ptr<function, u32>,
+    hit: HitRecord,
+) -> vec3<f32> {
+    if rng_next_float(rngState) < 0.5 {
+        return pdf_cosine_generate(rngState, pixar_onb(hit.normal));
+    } else {
+        return pdf_light_generate(rngState, hit.p);
+    }
+}
 
 fn pdf_value(pdf_type: u32, direction: vec3<f32>, onb: ONB) -> f32 {
     switch (pdf_type) {
-        case PDF_SPHERE: {
-            return pdf_sphere_value();
+        case PDF_NONE: {
+            // should not happen
+            return 0.0;
         }
         case PDF_COSINE: {
             return pdf_cosine_value(direction, onb);
         }
         default: {
             return 0.0;
-        }
-    }
-}
-
-fn pdf_generate(pdf_type: u32, state: ptr<function, u32>, onb: ONB) -> vec3<f32> {
-    switch (pdf_type) {
-        case PDF_SPHERE: {
-            return pdf_sphere_generate(state);
-        }
-        case PDF_COSINE: {
-            return pdf_cosine_generate(state, onb);
-        }
-        default: {
-            return vec3(0.0);
         }
     }
 }
