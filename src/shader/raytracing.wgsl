@@ -416,8 +416,12 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
             continue;
         }
 
-        scattered.ray.direction = pdf_generate(rngState, intersection);
+        // scattered.ray.direction = pdf_cosine_generate(rngState, pixar_onb(intersection.normal));
+        // let pdf = pdf_cosine_value(scattered.ray.direction, pixar_onb(intersection.normal));
+        // scattered.ray.direction = pdf_light_generate(rngState, intersection.p);
+        // let pdf = pdf_light_value(intersection.p, scattered.ray.direction);
 
+        scattered.ray.direction = pdf_generate(rngState, intersection);
         let pdf = pdf_mixed_value(
             pdf_value(
                 scattered.type_pdf,
@@ -644,6 +648,34 @@ fn rng_next_float(state: ptr<function, u32>) -> f32 {
     return f32(*state) / f32(0xffffffffu);
 }
 
+fn rng_next_vec3_surface(
+    state: ptr<function, u32>,
+    vertice: array<vec4<f32>, 3>
+) -> vec3<f32> {
+    let u = rng_next_float(state);
+    let v = rng_next_float(state);
+
+    let v0 = vertice[0].xyz; // corner
+    let v1 = vertice[1].xyz; // right
+    let v2 = vertice[2].xyz; // up
+
+    var point = v0 + u * (v1 - v0) + v * (v2 - v0);
+    return point;
+}
+
+fn area_surface(vertice: array<vec4<f32>, 3>) -> f32 {
+    let v0 = vertice[0].xyz; // corner
+    let v1 = vertice[1].xyz; // right
+    let v2 = vertice[2].xyz; // up
+
+    let e1 = v1 - v0;
+    let e2 = v2 - v0;
+
+    let c = cross(e1, e2);
+    // return (c.x * c.x + c.y * c.y + c.z * c.z) * 0.5;
+    return length(c) * 0.5;
+}
+
 fn pdf_sphere_value() -> f32 {
     return 1 / (4 * PI);
 }
@@ -664,19 +696,33 @@ fn pdf_cosine_generate(state: ptr<function, u32>, onb: ONB) -> vec3<f32> {
 
 fn pdf_light_generate(state: ptr<function, u32>, origin: vec3<f32>) -> vec3<f32> {
     // let num_light = arrayLength(&lights);
-    // let light = lights[rng_next_int(state) % num_light];
-    // let vertices = surfaces[light.id].vertices;
+    // let light = lights[0];
+    // let vertices_1 = surfaces[light.id].vertices;
+    let vertices_1: array<vec4<f32>, 3> = array<vec4<f32>, 3>(
+        vec4<f32>(-0.2, 0.99, -0.2, 1.0),
+        vec4<f32>(0.2, 0.99, -0.2, 1.0),
+        vec4<f32>(-0.2, 0.99, 0.2, 1.0)
+    );
 
     // TODO: this hardcoded because light is present at y = 0.99, need to fix
-    return vec3(
-        rng_next_float_bounded(state, -0.2, 0.2),
-        0.99,
-        rng_next_float_bounded(state, -0.2, 0.2)
+    return rng_next_vec3_surface(
+        state, vertices_1
     ) - origin;
 }
 
 fn pdf_light_value(origin: vec3<f32>, direction: vec3<f32>) -> f32 {
-    let area = 0.26; // hard coded for now
+    // let num_light = arrayLength(&lights);
+    // let light = lights[0];
+    // let vertices_1 = surfaces[light.id].vertices;
+    // let vertices_2 = surfaces[light.id + 1u].vertices;
+
+    let area = area_surface(
+        array<vec4<f32>, 3>(
+            vec4<f32>(-0.2, 0.99, -0.2, 1.0),
+            vec4<f32>(0.2, 0.99, -0.2, 1.0),
+            vec4<f32>(-0.2, 0.99, 0.2, 1.0)
+        )
+    ) * 2.0;
     var hit = HitRecord();
     if !check_intersection(Ray(origin, direction), &hit) {
         return 0.0;
