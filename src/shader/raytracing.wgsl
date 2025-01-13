@@ -696,13 +696,13 @@ fn pdf_cosine_generate(state: ptr<function, u32>, onb: ONB) -> vec3<f32> {
 
 fn pdf_light_generate(state: ptr<function, u32>, origin: vec3<f32>) -> vec3<f32> {
     // let num_light = arrayLength(&lights);
-    // let light = lights[0];
-    // let vertices_1 = surfaces[light.id].vertices;
-    let vertices_1: array<vec4<f32>, 3> = array<vec4<f32>, 3>(
-        vec4<f32>(-0.2, 0.99, -0.2, 1.0),
-        vec4<f32>(0.2, 0.99, -0.2, 1.0),
-        vec4<f32>(-0.2, 0.99, 0.2, 1.0)
-    );
+    let light = lights[0];
+    let vertices_1 = surfaces[light.id + 1].vertices;
+    // let vertices_1: array<vec4<f32>, 3> = array<vec4<f32>, 3>(
+    //     vec4<f32>(-0.2, 0.99, -0.2, 1.0),
+    //     vec4<f32>(0.2, 0.99, -0.2, 1.0),
+    //     vec4<f32>(-0.2, 0.99, 0.2, 1.0)
+    // );
 
     // TODO: this hardcoded because light is present at y = 0.99, need to fix
     return rng_next_vec3_surface(
@@ -712,16 +712,17 @@ fn pdf_light_generate(state: ptr<function, u32>, origin: vec3<f32>) -> vec3<f32>
 
 fn pdf_light_value(origin: vec3<f32>, direction: vec3<f32>) -> f32 {
     // let num_light = arrayLength(&lights);
-    // let light = lights[0];
-    // let vertices_1 = surfaces[light.id].vertices;
+    let light = lights[0];
+    let vertices_1 = surfaces[light.id + 1].vertices;
     // let vertices_2 = surfaces[light.id + 1u].vertices;
 
     let area = area_surface(
-        array<vec4<f32>, 3>(
-            vec4<f32>(-0.2, 0.99, -0.2, 1.0),
-            vec4<f32>(0.2, 0.99, -0.2, 1.0),
-            vec4<f32>(-0.2, 0.99, 0.2, 1.0)
-        )
+        // array<vec4<f32>, 3>(
+        //     vec4<f32>(-0.2, 0.99, -0.2, 1.0),
+        //     vec4<f32>(0.2, 0.99, -0.2, 1.0),
+        //     vec4<f32>(-0.2, 0.99, 0.2, 1.0)
+        // )
+        vertices_1
     ) * 2.0;
     var hit = HitRecord();
     if !check_intersection(Ray(origin, direction), &hit) {
@@ -729,7 +730,10 @@ fn pdf_light_value(origin: vec3<f32>, direction: vec3<f32>) -> f32 {
     }
 
     // TODO: something fishy is happening here, fix it 
-    let distance_squared = hit.t * hit.t * length(direction);
+    // let to_light = hit.p - origin;
+    // let distance_squared = dot(to_light, to_light);
+    // let cosine = abs(dot(direction, hit.normal));
+    let distance_squared = hit.t * length(direction * direction);
     let cosine = abs(dot(direction, hit.normal) / length(direction));
 
     return distance_squared / max(EPSILON, (cosine * area));
