@@ -5,7 +5,7 @@ mod material;
 pub use material::{GpuMaterial, Material, Texture};
 
 use crate::object::{
-    self, area, center_surface, rotate, scale, translate, Mesh, Object, ObjectType, Sphere,
+    self, area, center_surface, rotate, scale, translate, Light, Mesh, Object, ObjectType, Sphere,
 };
 
 #[derive(Clone, Debug)]
@@ -14,6 +14,7 @@ pub struct Scene {
     pub objects: Vec<Object>,
     pub spheres: Vec<Sphere>,
     pub meshes: Vec<Mesh>,
+    pub lights: Vec<Light>,
     pub camera: Camera,
     pub camera_controller: CameraController,
     pub render_param: RenderParam,
@@ -35,6 +36,7 @@ impl Scene {
     pub fn raytracing_scene_oneweek(render_param: RenderParam, frame_data: FrameData) -> Self {
         let mut spheres = Vec::new();
         let mut materials = Vec::new();
+        let mut lights = Vec::new();
 
         let ground_material = Material::Lambertian {
             albedo: Texture::new_from_color(glm::vec3(0.5, 0.5, 0.5)),
@@ -82,12 +84,10 @@ impl Scene {
         materials.push(Material::Dialectric { ref_idx: 1.5 });
 
         spheres.push(Sphere::new(glm::vec3(-4.0, 1.0, 0.0), 1.0));
-        // materials.push(Material::Lambertian {
-        //     albedo: Texture::new_from_color(glm::vec3(0.4, 0.2, 0.1)),
-        // });
         materials.push(Material::DiffuseLight {
             emit: Texture::new_from_color(glm::vec3(10.0, 10.0, 10.0)),
         });
+        lights.push(Light::new(spheres.len() as u32 - 1, ObjectType::Sphere));
 
         spheres.push(Sphere::new(glm::vec3(4.0, 1.0, 0.0), 1.0));
         materials.push(Material::Metal {
@@ -116,6 +116,7 @@ impl Scene {
             meshes: vec![Mesh::empty()],
             materials,
             spheres,
+            lights,
             render_param,
             frame_data,
             camera_controller: CameraController::new(4.0, 0.4),
@@ -126,6 +127,7 @@ impl Scene {
         let mut materials = Vec::new();
         let mut objects = Vec::new();
         let mut meshes = Vec::new();
+        let mut lights = Vec::new();
 
         let red = Material::Lambertian {
             albedo: Texture::new_from_color(glm::vec3(0.65, 0.05, 0.05)),
@@ -152,6 +154,7 @@ impl Scene {
         materials.push(white.clone());
         materials.push(light);
         materials.push(white.clone());
+        // materials.push(white.clone());
         materials.push(metal);
 
         let mut back_wall = Mesh::quad();
@@ -224,6 +227,7 @@ impl Scene {
         }
         ceiling_light.iter().for_each(|m| meshes.push(m.clone()));
         objects.push(Object::new(5, ObjectType::Mesh, Some(2)));
+        lights.push(Light::new(5, ObjectType::Mesh));
 
         let mut box1 = Mesh::cube();
         scale(&mut box1, glm::vec3(0.3, 0.3, 0.3));
@@ -255,6 +259,7 @@ impl Scene {
             meshes,
             materials,
             spheres: vec![Sphere::empty()],
+            lights,
             render_param,
             frame_data,
             camera_controller: CameraController::new(4.0, 0.4),
@@ -299,6 +304,7 @@ impl Scene {
             meshes,
             materials,
             spheres: vec![Sphere::empty()],
+            lights: vec![Light::empty()],
             render_param,
             frame_data,
             camera_controller: CameraController::new(4.0, 0.4),

@@ -28,3 +28,26 @@ pub enum ObjectType {
     Sphere = 0,
     Mesh = 1,
 }
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable, PartialEq)]
+pub struct Light {
+    pub id: u32,
+    pub light_type: u32,
+}
+
+impl Light {
+    pub fn new(id: u32, light_type: ObjectType) -> Self {
+        Light {
+            id,
+            light_type: light_type as u32,
+        }
+    }
+
+    pub fn empty() -> Self {
+        Light {
+            id: 0xFFFFFFFF,
+            light_type: 0,
+        }
+    }
+}

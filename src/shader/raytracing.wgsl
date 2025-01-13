@@ -26,6 +26,8 @@ const MAX_T = 1000f;
 @group(1) @binding(2) var<storage, read> materials: array<Material>;
 @group(1) @binding(3) var<storage, read> textures: array<array<f32, 3>>;
 @group(1) @binding(4) var<storage, read> surfaces: array<Surface>;
+@group(1) @binding(5) var<storage, read> lights: array<Light>;
+
 
 
 @vertex
@@ -208,6 +210,13 @@ struct Scatter {
     ray: Ray,
     attenuation: vec3<f32>,
     type_pdf: u32,
+}
+
+struct Light {
+    // index of the object
+    id: u32,
+    // sphere or mesh
+    light_type: u32,
 }
 
 const PDF_NONE = 0u;
@@ -483,9 +492,9 @@ fn scatter(
         }
         case MAT_METAL: 
         {
-            let reflected = reflect(normalize(ray.direction), hit.normal);
+            var reflected = reflect(ray.direction, hit.normal);
             let fuzz = material.fuzz;
-            let direction = reflected + fuzz * rng_in_unit_sphere(rngState);
+            let direction = normalize(reflected) + fuzz * rng_in_unit_sphere(rngState);
             *s = Scatter(
                 Ray(hit.p, direction),
                 texture_look_up(material.desc, 0.5, 0.5), PDF_NONE
@@ -654,13 +663,16 @@ fn pdf_cosine_generate(state: ptr<function, u32>, onb: ONB) -> vec3<f32> {
 }
 
 fn pdf_light_generate(state: ptr<function, u32>, origin: vec3<f32>) -> vec3<f32> {
-    // TODO: this hardcoded because light is present at y = 0.99, need to fix 
-    let p = vec3(
+    // let num_light = arrayLength(&lights);
+    // let light = lights[rng_next_int(state) % num_light];
+    // let vertices = surfaces[light.id].vertices;
+
+    // TODO: this hardcoded because light is present at y = 0.99, need to fix
+    return vec3(
         rng_next_float_bounded(state, -0.2, 0.2),
         0.99,
         rng_next_float_bounded(state, -0.2, 0.2)
-    );
-    return p - origin;
+    ) - origin;
 }
 
 fn pdf_light_value(origin: vec3<f32>, direction: vec3<f32>) -> f32 {
@@ -671,10 +683,10 @@ fn pdf_light_value(origin: vec3<f32>, direction: vec3<f32>) -> f32 {
     }
 
     // TODO: something fishy is happening here, fix it 
-    let distance_squared = hit.t * hit.t * hit.t * length(direction);
+    let distance_squared = hit.t * hit.t * length(direction);
     let cosine = abs(dot(direction, hit.normal) / length(direction));
 
-    return distance_squared / (cosine * area);
+    return distance_squared / max(EPSILON, (cosine * area));
 }
 
 fn pdf_mixed_value(value1: f32, value2: f32) -> f32 {
