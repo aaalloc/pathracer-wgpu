@@ -5,7 +5,8 @@ mod material;
 pub use material::{GpuMaterial, Material, Texture};
 
 use crate::object::{
-    self, area, center_surface, rotate, scale, translate, Light, Mesh, Object, ObjectType, Sphere,
+    self, area, center_surface, rotate, scale, translate, Light, Mesh, Object, ObjectList,
+    ObjectType, Sphere,
 };
 
 #[derive(Clone, Debug)]
@@ -107,7 +108,7 @@ impl Scene {
         let objects: Vec<Object> = spheres
             .iter()
             .enumerate()
-            .map(|(i, _)| Object::new(i as u32, object::ObjectType::Sphere, None))
+            .map(|(i, _)| Object::new(i as u32, object::ObjectType::Sphere, None, None))
             .collect();
 
         Self {
@@ -125,7 +126,8 @@ impl Scene {
 
     pub fn cornell_scene(render_param: RenderParam, frame_data: FrameData) -> Self {
         let mut materials = Vec::new();
-        let mut objects = Vec::new();
+        let mut object_list = ObjectList::new();
+        // let mut objects = Vec::new();
         let mut meshes = Vec::new();
         let mut lights = Vec::new();
 
@@ -160,7 +162,7 @@ impl Scene {
         let mut back_wall = Mesh::quad();
         translate(&mut back_wall, glm::vec3(0.0, 0.0, -1.0));
         back_wall.iter().for_each(|m| meshes.push(m.clone()));
-        objects.push(Object::new(0, ObjectType::Mesh, Some(2)));
+        object_list.add_mesh(Some(back_wall.len()));
 
         let mut left_wall = Mesh::quad();
         rotate(&mut left_wall, 90., glm::vec3(0.0, 1.0, 0.0));
@@ -173,7 +175,7 @@ impl Scene {
             ]
         }
         left_wall.iter().for_each(|m| meshes.push(m.clone()));
-        objects.push(Object::new(1, ObjectType::Mesh, Some(2)));
+        object_list.add_mesh(Some(left_wall.len()));
 
         let mut right_wall: Vec<Mesh> = Mesh::quad();
         rotate(&mut right_wall, 90., glm::vec3(0.0, 1.0, 0.0));
@@ -186,7 +188,7 @@ impl Scene {
             ]
         }
         right_wall.iter().for_each(|m| meshes.push(m.clone()));
-        objects.push(Object::new(2, ObjectType::Mesh, Some(2)));
+        object_list.add_mesh(Some(right_wall.len()));
 
         let mut ceiling = Mesh::quad();
         rotate(&mut ceiling, 90., glm::vec3(1.0, 0.0, 0.0));
@@ -199,7 +201,7 @@ impl Scene {
             ]
         }
         ceiling.iter().for_each(|m| meshes.push(m.clone()));
-        objects.push(Object::new(3, ObjectType::Mesh, Some(2)));
+        object_list.add_mesh(Some(ceiling.len()));
 
         let mut floor = Mesh::quad();
         rotate(&mut floor, 90., glm::vec3(1.0, 0.0, 0.0));
@@ -212,7 +214,7 @@ impl Scene {
             ]
         }
         floor.iter().for_each(|m| meshes.push(m.clone()));
-        objects.push(Object::new(4, ObjectType::Mesh, Some(2)));
+        object_list.add_mesh(Some(floor.len()));
 
         let mut ceiling_light = Mesh::quad();
         rotate(&mut ceiling_light, 90., glm::vec3(1.0, 0.0, 0.0));
@@ -226,7 +228,7 @@ impl Scene {
             ]
         }
         ceiling_light.iter().for_each(|m| meshes.push(m.clone()));
-        objects.push(Object::new(5, ObjectType::Mesh, Some(2)));
+        object_list.add_mesh(Some(ceiling_light.len()));
         lights.push(Light::new(5, ObjectType::Mesh));
 
         let mut box1 = Mesh::cube();
@@ -234,7 +236,7 @@ impl Scene {
         rotate(&mut box1, 70., glm::vec3(0.0, 1.0, 0.0));
         translate(&mut box1, glm::vec3(0.3, -0.699, 0.3));
         box1.iter().for_each(|m| meshes.push(m.clone()));
-        objects.push(Object::new(6, ObjectType::Mesh, Some(box1.len())));
+        object_list.add_mesh(Some(box1.len()));
 
         let mut rectangle_box = Mesh::cube();
         scale(&mut rectangle_box, glm::vec3(0.3, 0.6, 0.3));
@@ -242,7 +244,7 @@ impl Scene {
         translate(&mut rectangle_box, glm::vec3(-0.3, -0.399, -0.2));
 
         rectangle_box.iter().for_each(|m| meshes.push(m.clone()));
-        objects.push(Object::new(7, ObjectType::Mesh, Some(rectangle_box.len())));
+        object_list.add_mesh(Some(rectangle_box.len()));
 
         let camera = Camera {
             eye_pos: glm::vec3(0.0, 0.0, 5.),
@@ -254,7 +256,7 @@ impl Scene {
         };
 
         Self {
-            objects,
+            objects: object_list.objects,
             camera,
             meshes,
             materials,
@@ -287,7 +289,7 @@ impl Scene {
 
         let meshes = Mesh::from_tobj(s);
 
-        objects.push(Object::new(0, ObjectType::Mesh, Some(meshes.len())));
+        objects.push(Object::new(0, ObjectType::Mesh, Some(meshes.len()), None));
 
         let camera = Camera {
             eye_pos: glm::vec3(0.0, 0.0, 6.6),

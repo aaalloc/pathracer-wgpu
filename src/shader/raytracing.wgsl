@@ -159,6 +159,7 @@ struct Object {
     obj_type: u32,
     // for when object is has multiple meshes
     count: u32,
+    offset: u32,
 };
 
 const OBJECT_SPHERE = 0u;
@@ -338,18 +339,16 @@ fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool 
     var hit_anything = false;
     var tmp_rec = HitRecord();
 
-    var mesh_offset = 0u;
     for (var i = 0u; i < arrayLength(&objects); i += 1u) {
         let obj = objects[i];
         if obj.count > 1u {
             for (var j = 0u; j < obj.count; j += 1u) {
-                if hit_triangle(mesh_offset + i + j, obj.id, ray, MIN_T, closest_so_far, &tmp_rec) {
+                if hit_triangle(obj.offset + j, obj.id, ray, MIN_T, closest_so_far, &tmp_rec) {
                     hit_anything = true;
                     closest_so_far = tmp_rec.t;
                     *intersection = tmp_rec;
                 }
             }
-            mesh_offset += obj.count - 1u;
         } else {
             if hit_object(i, ray, MIN_T, closest_so_far, &tmp_rec) {
                 hit_anything = true;
@@ -420,7 +419,7 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
         // let pdf = pdf_cosine_value(scattered.ray.direction, pixar_onb(intersection.normal));
         // scattered.ray.direction = pdf_light_generate(rngState, intersection.p);
         // let pdf = pdf_light_value(intersection.p, scattered.ray.direction);
-
+        scattered.ray.origin = intersection.p;
         scattered.ray.direction = pdf_generate(rngState, intersection);
         let pdf = pdf_mixed_value(
             pdf_value(
@@ -485,14 +484,8 @@ fn scatter(
     {
         case MAT_LAMBERTIAN:
         {
-            let onb = pixar_onb(hit.normal);
-            let direction = pdf_cosine_generate(rngState, onb);
-
-            *s = Scatter(
-                Ray(hit.p, direction),
-                texture_look_up(material.desc, 0.5, 0.5),
-                PDF_COSINE
-            );
+            (*s).attenuation = texture_look_up(material.desc, 0.5, 0.5);
+            (*s).type_pdf = PDF_COSINE;
         }
         case MAT_METAL: 
         {
@@ -695,33 +688,18 @@ fn pdf_cosine_generate(state: ptr<function, u32>, onb: ONB) -> vec3<f32> {
 }
 
 fn pdf_light_generate(state: ptr<function, u32>, origin: vec3<f32>) -> vec3<f32> {
-    // let num_light = arrayLength(&lights);
     let light = lights[0];
-    let vertices_1 = surfaces[light.id + 1].vertices;
-    // let vertices_1: array<vec4<f32>, 3> = array<vec4<f32>, 3>(
-    //     vec4<f32>(-0.2, 0.99, -0.2, 1.0),
-    //     vec4<f32>(0.2, 0.99, -0.2, 1.0),
-    //     vec4<f32>(-0.2, 0.99, 0.2, 1.0)
-    // );
-
-    // TODO: this hardcoded because light is present at y = 0.99, need to fix
+    let vertices_1 = surfaces[objects[light.id].offset].vertices;
     return rng_next_vec3_surface(
         state, vertices_1
     ) - origin;
 }
 
 fn pdf_light_value(origin: vec3<f32>, direction: vec3<f32>) -> f32 {
-    // let num_light = arrayLength(&lights);
     let light = lights[0];
-    let vertices_1 = surfaces[light.id + 1].vertices;
-    // let vertices_2 = surfaces[light.id + 1u].vertices;
+    let vertices_1 = surfaces[objects[light.id].offset].vertices;
 
     let area = area_surface(
-        // array<vec4<f32>, 3>(
-        //     vec4<f32>(-0.2, 0.99, -0.2, 1.0),
-        //     vec4<f32>(0.2, 0.99, -0.2, 1.0),
-        //     vec4<f32>(-0.2, 0.99, 0.2, 1.0)
-        // )
         vertices_1
     ) * 2.0;
     var hit = HitRecord();
@@ -730,11 +708,15 @@ fn pdf_light_value(origin: vec3<f32>, direction: vec3<f32>) -> f32 {
     }
 
     // TODO: something fishy is happening here, fix it 
-    // let to_light = hit.p - origin;
-    // let distance_squared = dot(to_light, to_light);
-    // let cosine = abs(dot(direction, hit.normal));
-    let distance_squared = hit.t * length(direction * direction);
-    let cosine = abs(dot(direction, hit.normal) / length(direction));
+    
+    // let distance_squared = hit.t * hit.t * length(direction * direction);
+    // let cosine = abs(dot(direction, hit.normal) / length(direction));
+
+    var to_light = direction;
+    let distance_squared = dot(to_light, to_light);
+    to_light = normalize(to_light);
+    let cosine = to_light.y;
+
 
     return distance_squared / max(EPSILON, (cosine * area));
 }

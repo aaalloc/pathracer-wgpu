@@ -10,14 +10,56 @@ pub struct Object {
     pub id: u32,
     pub obj_type: u32,
     pub count: u32,
+    pub offset: u32,
+}
+
+pub struct ObjectList {
+    pub objects: Vec<Object>,
+    pub counter: u32,
+    pub offset_counter: u32,
+}
+
+impl ObjectList {
+    pub fn new() -> Self {
+        ObjectList {
+            objects: Vec::new(),
+            counter: 0,
+            offset_counter: 0,
+        }
+    }
+
+    pub fn add(&mut self, obj: Object) {
+        self.objects.push(obj);
+        self.counter += 1;
+        self.offset_counter += obj.count;
+    }
+
+    pub fn add_sphere(&mut self, count: Option<usize>) {
+        self.add(Object::new(
+            self.counter,
+            ObjectType::Sphere,
+            count,
+            Some(self.offset_counter),
+        ));
+    }
+
+    pub fn add_mesh(&mut self, count: Option<usize>) {
+        self.add(Object::new(
+            self.counter,
+            ObjectType::Mesh,
+            count,
+            Some(self.offset_counter),
+        ));
+    }
 }
 
 impl Object {
-    pub fn new(id: u32, obj_type: ObjectType, count: Option<usize>) -> Self {
+    pub fn new(id: u32, obj_type: ObjectType, count: Option<usize>, offset: Option<u32>) -> Self {
         Object {
             id,
             obj_type: obj_type as u32,
             count: count.unwrap_or(1) as u32,
+            offset: offset.unwrap_or(0),
         }
     }
 }
