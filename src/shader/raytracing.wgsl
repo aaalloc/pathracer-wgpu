@@ -415,21 +415,16 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
             continue;
         }
 
+        scattered.ray.origin = intersection.p;
         // scattered.ray.direction = pdf_cosine_generate(rngState, pixar_onb(intersection.normal));
         // let pdf = pdf_cosine_value(scattered.ray.direction, pixar_onb(intersection.normal));
         // scattered.ray.direction = pdf_light_generate(rngState, intersection.p);
         // let pdf = pdf_light_value(intersection.p, scattered.ray.direction);
-        scattered.ray.origin = intersection.p;
         scattered.ray.direction = pdf_generate(rngState, intersection);
         let pdf = pdf_mixed_value(
-            pdf_value(
-                scattered.type_pdf,
-                scattered.ray.direction,
-                pixar_onb(intersection.normal)
-            ),
+            pdf_cosine_value(scattered.ray.direction, pixar_onb(intersection.normal)),
             pdf_light_value(intersection.p, scattered.ray.direction)
         );
-
 
         let scattering_pdf = scattering_pdf_lambertian(intersection.normal, scattered.ray.direction);
 
@@ -699,30 +694,19 @@ fn pdf_light_value(origin: vec3<f32>, direction: vec3<f32>) -> f32 {
     let light = lights[0];
     let vertices_1 = surfaces[objects[light.id].offset].vertices;
 
-    let area = area_surface(
-        vertices_1
-    ) * 2.0;
+    let area = area_surface(vertices_1) * 2.0;
     var hit = HitRecord();
     if !check_intersection(Ray(origin, direction), &hit) {
         return 0.0;
     }
 
-    // TODO: something fishy is happening here, fix it 
-    
-    // let distance_squared = hit.t * hit.t * length(direction * direction);
-    // let cosine = abs(dot(direction, hit.normal) / length(direction));
-
-    var to_light = direction;
-    let distance_squared = dot(to_light, to_light);
-    to_light = normalize(to_light);
-    let cosine = to_light.y;
-
-
-    return distance_squared / max(EPSILON, (cosine * area));
+    let distance_squared = hit.t * hit.t * length(direction * direction);
+    let cosine = abs(dot(direction, hit.normal) / length(direction));
+    return distance_squared / (cosine * area);
 }
 
 fn pdf_mixed_value(value1: f32, value2: f32) -> f32 {
-    return max(EPSILON, (0.5 * value1) + (0.5 * value2));
+    return (0.5 * value1) + (0.5 * value2);
 }
 
 
