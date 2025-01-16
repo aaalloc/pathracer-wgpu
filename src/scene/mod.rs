@@ -156,8 +156,8 @@ impl Scene {
         materials.push(white.clone());
         materials.push(light);
         materials.push(white.clone());
-        // materials.push(white.clone());
-        materials.push(metal);
+        materials.push(white.clone());
+        // materials.push(metal);
 
         let mut back_wall = Mesh::quad();
         translate(&mut back_wall, glm::vec3(0.0, 0.0, -1.0));

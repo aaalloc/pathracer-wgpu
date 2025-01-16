@@ -685,9 +685,7 @@ fn pdf_cosine_generate(state: ptr<function, u32>, onb: ONB) -> vec3<f32> {
 fn pdf_light_generate(state: ptr<function, u32>, origin: vec3<f32>) -> vec3<f32> {
     let light = lights[0];
     let vertices_1 = surfaces[objects[light.id].offset].vertices;
-    return rng_next_vec3_surface(
-        state, vertices_1
-    ) - origin;
+    return rng_next_vec3_surface(state, vertices_1) - origin;
 }
 
 fn pdf_light_value(origin: vec3<f32>, direction: vec3<f32>) -> f32 {
@@ -700,9 +698,9 @@ fn pdf_light_value(origin: vec3<f32>, direction: vec3<f32>) -> f32 {
         return 0.0;
     }
 
-    let distance_squared = hit.t * hit.t * length(direction * direction);
-    let cosine = abs(dot(direction, hit.normal) / length(direction));
-    return distance_squared / (cosine * area);
+    let cosine = abs(dot(normalize(direction), hit.normal));
+    // let cosine = abs(direction.y);
+    return 1 / (cosine * area);
 }
 
 fn pdf_mixed_value(value1: f32, value2: f32) -> f32 {
