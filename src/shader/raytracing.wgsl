@@ -344,18 +344,23 @@ fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool 
         if obj.count > 1u {
             for (var j = 0u; j < obj.count; j += 1u) {
                 if hit_triangle(obj.offset + j, obj.id, ray, MIN_T, closest_so_far, &tmp_rec) {
-                    hit_anything = true;
+                    // hit_anything = true;
                     closest_so_far = tmp_rec.t;
                     *intersection = tmp_rec;
                 }
             }
         } else {
             if hit_object(i, ray, MIN_T, closest_so_far, &tmp_rec) {
-                hit_anything = true;
+                // hit_anything = true;
                 closest_so_far = tmp_rec.t;
                 *intersection = tmp_rec;
             }
         }
+    }
+    if closest_so_far < MAX_T {
+        hit_anything = true;
+    } else {
+        *intersection = HitRecord();
     }
 
     return hit_anything;
@@ -416,18 +421,19 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
         }
 
         scattered.ray.origin = intersection.p;
-        // scattered.ray.direction = pdf_cosine_generate(rngState, pixar_onb(intersection.normal));
-        // let pdf = pdf_cosine_value(scattered.ray.direction, pixar_onb(intersection.normal));
+        scattered.ray.direction = pdf_cosine_generate(rngState, pixar_onb(intersection.normal));
+        let pdf = pdf_cosine_value(scattered.ray.direction, pixar_onb(intersection.normal));
         // scattered.ray.direction = pdf_light_generate(rngState, intersection.p);
         // let pdf = pdf_light_value(intersection.p, scattered.ray.direction);
-        scattered.ray.direction = pdf_generate(rngState, intersection);
-        let pdf = pdf_mixed_value(
-            pdf_cosine_value(scattered.ray.direction, pixar_onb(intersection.normal)),
-            pdf_light_value(intersection.p, scattered.ray.direction)
-        );
-
+        // scattered.ray.direction = pdf_generate(rngState, intersection);
+        // let pdf = pdf_mixed_value(
+        //     pdf_cosine_value(scattered.ray.direction, pixar_onb(intersection.normal)),
+        //     pdf_light_value(intersection.p, scattered.ray.direction)
+        // );
         let scattering_pdf = scattering_pdf_lambertian(intersection.normal, scattered.ray.direction);
 
+        // let scattering_pdf = 1.0;
+        // let pdf = 1.0;
         color_from_scatter *= (scattered.attenuation * scattering_pdf) / pdf;
         ray = scattered.ray;
     }
@@ -698,9 +704,17 @@ fn pdf_light_value(origin: vec3<f32>, direction: vec3<f32>) -> f32 {
         return 0.0;
     }
 
-    let cosine = abs(dot(normalize(direction), hit.normal));
+
+    // let distance = hit.t * hit.t * length(direction * direction);
+    // let cosine = abs(dot(normalize(direction), hit.normal));
     // let cosine = abs(direction.y);
-    return 1 / (cosine * area);
+    // return distance / (cosine * area);
+
+
+    let distance = origin - hit.p;
+    let l = length(distance * distance);
+    let pdf = l / (abs(dot(hit.normal, -direction)) * area);
+    return pdf;
 }
 
 fn pdf_mixed_value(value1: f32, value2: f32) -> f32 {

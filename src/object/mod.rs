@@ -13,8 +13,13 @@ pub struct Object {
     pub offset: u32,
 }
 
+#[derive(Clone, Debug)]
+
 pub struct ObjectList {
     pub objects: Vec<Object>,
+    pub meshes: Vec<Mesh>,
+    // hashmap where key is the object id and value is a tuple of start and end index in the mesh vector
+    pub object_hashmap: std::collections::HashMap<u32, (u32, u32)>,
     pub counter: u32,
     pub offset_counter: u32,
 }
@@ -25,31 +30,47 @@ impl ObjectList {
             objects: Vec::new(),
             counter: 0,
             offset_counter: 0,
+            meshes: Vec::new(),
+            object_hashmap: std::collections::HashMap::new(),
         }
     }
 
-    pub fn add(&mut self, obj: Object) {
+    pub fn add(&mut self, obj: Object, meshes: Option<Vec<Mesh>>) {
         self.objects.push(obj);
         self.counter += 1;
         self.offset_counter += obj.count;
+        if let Some(mesh) = meshes {
+            mesh.iter().for_each(|m| self.meshes.push(*m));
+
+            self.object_hashmap.insert(
+                obj.id,
+                (self.offset_counter - obj.count, self.offset_counter),
+            );
+        }
     }
 
     pub fn add_sphere(&mut self, count: Option<usize>) {
-        self.add(Object::new(
-            self.counter,
-            ObjectType::Sphere,
-            count,
-            Some(self.offset_counter),
-        ));
+        self.add(
+            Object::new(
+                self.counter,
+                ObjectType::Sphere,
+                count,
+                Some(self.offset_counter),
+            ),
+            None,
+        );
     }
 
-    pub fn add_mesh(&mut self, count: Option<usize>) {
-        self.add(Object::new(
-            self.counter,
-            ObjectType::Mesh,
-            count,
-            Some(self.offset_counter),
-        ));
+    pub fn add_mesh(&mut self, count: Option<usize>, meshes: Vec<Mesh>) {
+        self.add(
+            Object::new(
+                self.counter,
+                ObjectType::Mesh,
+                count,
+                Some(self.offset_counter),
+            ),
+            Some(meshes),
+        );
     }
 }
 

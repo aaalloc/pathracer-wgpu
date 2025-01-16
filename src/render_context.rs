@@ -6,6 +6,7 @@ use winit::{
 };
 
 use crate::{
+    object::position,
     scene::{GpuCamera, GpuMaterial, Scene},
     utils::{EguiRenderer, StorageBuffer, UniformBuffer, Vertex},
 };
@@ -179,7 +180,7 @@ impl<'a> RenderContext<'a> {
         let (scene_bind_group_layout, scene_bind_group) = {
             let objects_buffer = StorageBuffer::new_from_bytes(
                 &device,
-                bytemuck::cast_slice(scene.objects.as_slice()),
+                bytemuck::cast_slice(scene.object_list.objects.as_slice()),
                 0_u32,
                 Some("objects buffer"),
             );
@@ -213,7 +214,7 @@ impl<'a> RenderContext<'a> {
 
             let surfaces_buffer = StorageBuffer::new_from_bytes(
                 &device,
-                bytemuck::cast_slice(scene.meshes.as_slice()),
+                bytemuck::cast_slice(scene.object_list.meshes.as_slice()),
                 4_u32,
                 Some("surfaces buffer"),
             );
@@ -555,6 +556,24 @@ impl<'a> RenderContext<'a> {
                     ui.label(format!("Eye position: {:?}", self.scene.camera.eye_pos));
                     ui.label(format!("Up vector: {:?}", self.scene.camera.up));
                 });
+
+            // egui::Window::new("Object scene")
+            //     .vscroll(true)
+            //     .default_open(false)
+            //     .collapsible(true)
+            //     .show(self.egui_renderer.context(), |ui| {
+            //         let l = (self.scene.object_list.objects.len() - 1) as u32;
+            //         let index = self.scene.object_list.object_hashmap.get(&l).unwrap();
+            //         let slice_monkey =
+            //             &self.scene.object_list.meshes[index.0 as usize..index.1 as usize];
+
+            //         ui.label("Objects:");
+            //         ui.label(format!(
+            //             "Monkey info: {:?}",
+            //             self.scene.object_list.object_hashmap.get(&l)
+            //         ));
+            //         ui.label(format!("Position: {:?}", position(slice_monkey)));
+            //     });
 
             self.egui_renderer.end_frame_and_draw(
                 &self.device,

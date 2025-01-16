@@ -252,6 +252,22 @@ pub fn translate(meshes: &mut Vec<Mesh>, translation: glm::Vec3) {
     }
 }
 
+pub fn position(meshes: &[Mesh]) -> Vec3 {
+    let mut position = glm::vec3(0.0, 0.0, 0.0);
+    for mesh in meshes.iter() {
+        for vertex in mesh.vertices.iter() {
+            position.x += vertex.x;
+            position.y += vertex.y;
+            position.z += vertex.z;
+        }
+    }
+    let length = meshes.len() as f32 * 3.0;
+    position.x /= length;
+    position.y /= length;
+    position.z /= length;
+    position
+}
+
 pub fn scale(meshes: &mut Vec<Mesh>, scale: glm::Vec3) {
     for mesh in meshes.iter_mut() {
         for vertex in mesh.vertices.iter_mut() {

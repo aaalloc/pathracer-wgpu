@@ -183,7 +183,7 @@ pub async fn run() {
             &Scene::cornell_scene(
                 scene::RenderParam {
                     samples_per_pixel: 1,
-                    max_depth: 50,
+                    max_depth: 10,
                     samples_max_per_pixel: 1000,
                     total_samples: 0,
                     clear_samples: 0,

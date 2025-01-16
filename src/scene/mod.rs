@@ -12,14 +12,13 @@ use crate::object::{
 #[derive(Clone, Debug)]
 pub struct Scene {
     pub materials: Vec<Material>,
-    pub objects: Vec<Object>,
     pub spheres: Vec<Sphere>,
-    pub meshes: Vec<Mesh>,
     pub lights: Vec<Light>,
     pub camera: Camera,
     pub camera_controller: CameraController,
     pub render_param: RenderParam,
     pub frame_data: FrameData,
+    pub object_list: ObjectList,
 }
 
 impl PartialEq for Scene {
@@ -112,23 +111,21 @@ impl Scene {
             .collect();
 
         Self {
-            objects,
             camera,
-            meshes: vec![Mesh::empty()],
+            // meshes: vec![Mesh::empty()],
             materials,
             spheres,
             lights,
             render_param,
             frame_data,
             camera_controller: CameraController::new(4.0, 0.4),
+            object_list: ObjectList::new(),
         }
     }
 
     pub fn cornell_scene(render_param: RenderParam, frame_data: FrameData) -> Self {
         let mut materials = Vec::new();
         let mut object_list = ObjectList::new();
-        // let mut objects = Vec::new();
-        let mut meshes = Vec::new();
         let mut lights = Vec::new();
 
         let red = Material::Lambertian {
@@ -157,12 +154,12 @@ impl Scene {
         materials.push(light);
         materials.push(white.clone());
         // materials.push(white.clone());
-        materials.push(metal);
+        materials.push(metal.clone());
+        materials.push(metal.clone());
 
         let mut back_wall = Mesh::quad();
         translate(&mut back_wall, glm::vec3(0.0, 0.0, -1.0));
-        back_wall.iter().for_each(|m| meshes.push(m.clone()));
-        object_list.add_mesh(Some(back_wall.len()));
+        object_list.add_mesh(Some(back_wall.len()), back_wall);
 
         let mut left_wall = Mesh::quad();
         rotate(&mut left_wall, 90., glm::vec3(0.0, 1.0, 0.0));
@@ -174,8 +171,7 @@ impl Scene {
                 glm::vec4(0.5, 0.0, 0.0, 1.0),
             ]
         }
-        left_wall.iter().for_each(|m| meshes.push(m.clone()));
-        object_list.add_mesh(Some(left_wall.len()));
+        object_list.add_mesh(Some(left_wall.len()), left_wall);
 
         let mut right_wall: Vec<Mesh> = Mesh::quad();
         rotate(&mut right_wall, 90., glm::vec3(0.0, 1.0, 0.0));
@@ -187,8 +183,7 @@ impl Scene {
                 glm::vec4(-0.5, 0.0, 0.0, 1.0),
             ]
         }
-        right_wall.iter().for_each(|m| meshes.push(m.clone()));
-        object_list.add_mesh(Some(right_wall.len()));
+        object_list.add_mesh(Some(right_wall.len()), right_wall);
 
         let mut ceiling = Mesh::quad();
         rotate(&mut ceiling, 90., glm::vec3(1.0, 0.0, 0.0));
@@ -200,8 +195,7 @@ impl Scene {
                 glm::vec4(0.0, -0.5, 0.0, 1.0),
             ]
         }
-        ceiling.iter().for_each(|m| meshes.push(m.clone()));
-        object_list.add_mesh(Some(ceiling.len()));
+        object_list.add_mesh(Some(ceiling.len()), ceiling);
 
         let mut floor = Mesh::quad();
         rotate(&mut floor, 90., glm::vec3(1.0, 0.0, 0.0));
@@ -213,8 +207,7 @@ impl Scene {
                 glm::vec4(0.0, 0.5, 0.0, 1.0),
             ]
         }
-        floor.iter().for_each(|m| meshes.push(m.clone()));
-        object_list.add_mesh(Some(floor.len()));
+        object_list.add_mesh(Some(floor.len()), floor);
 
         let mut ceiling_light = Mesh::quad();
         rotate(&mut ceiling_light, 90., glm::vec3(1.0, 0.0, 0.0));
@@ -227,24 +220,36 @@ impl Scene {
                 glm::vec4(0.0, -0.5, 0.0, 1.0),
             ]
         }
-        ceiling_light.iter().for_each(|m| meshes.push(m.clone()));
-        object_list.add_mesh(Some(ceiling_light.len()));
+        object_list.add_mesh(Some(ceiling_light.len()), ceiling_light);
         lights.push(Light::new(5, ObjectType::Mesh));
 
         let mut box1 = Mesh::cube();
         scale(&mut box1, glm::vec3(0.3, 0.3, 0.3));
         rotate(&mut box1, 70., glm::vec3(0.0, 1.0, 0.0));
         translate(&mut box1, glm::vec3(0.3, -0.699, 0.3));
-        box1.iter().for_each(|m| meshes.push(m.clone()));
-        object_list.add_mesh(Some(box1.len()));
+        object_list.add_mesh(Some(box1.len()), box1);
 
         let mut rectangle_box = Mesh::cube();
         scale(&mut rectangle_box, glm::vec3(0.3, 0.6, 0.3));
         rotate(&mut rectangle_box, 15., glm::vec3(0.0, 1.0, 0.0));
         translate(&mut rectangle_box, glm::vec3(-0.3, -0.399, -0.35));
 
-        rectangle_box.iter().for_each(|m| meshes.push(m.clone()));
-        object_list.add_mesh(Some(rectangle_box.len()));
+        object_list.add_mesh(Some(rectangle_box.len()), rectangle_box);
+
+        // let path_str = "suzanne.obj";
+        // let options = tobj::LoadOptions {
+        // triangulate: true,
+        // ..Default::default()
+        // };
+        // println!("Current path: {:?}", std::env::current_dir().unwrap());
+
+        // let s = tobj::load_obj(path_str, &options).unwrap().0[0].clone();
+
+        // let mut sdsd = Mesh::from_tobj(s);
+        // scale(&mut sdsd, glm::vec3(0.2, 0.2, 0.2));
+        // rotate(&mut sdsd, -30.0, glm::vec3(0.0, 1.0, 0.0));
+        // translate(&mut sdsd, glm::vec3(0.3, -0.2, 0.3));
+        // object_list.add_mesh(Some(sdsd.len()), sdsd);
 
         let camera = Camera {
             eye_pos: glm::vec3(0.0, 0.0, 5.),
@@ -256,21 +261,20 @@ impl Scene {
         };
 
         Self {
-            objects: object_list.objects,
             camera,
-            meshes,
             materials,
             spheres: vec![Sphere::empty()],
             lights,
             render_param,
             frame_data,
             camera_controller: CameraController::new(4.0, 0.4),
+            object_list,
         }
     }
 
     pub fn teapot_scene(render_param: RenderParam, frame_data: FrameData) -> Self {
         let mut materials = Vec::new();
-        let mut objects = Vec::new();
+        let mut object_list = ObjectList::new();
 
         let ground_material = Material::Lambertian {
             albedo: Texture::new_from_color(glm::vec3(0.5, 0.5, 0.5)),
@@ -278,7 +282,7 @@ impl Scene {
 
         materials.push(ground_material);
 
-        let path_str = "assets/mesh/teapot.obj";
+        let path_str = "teapot.obj";
         let options = tobj::LoadOptions {
             triangulate: true,
             ..Default::default()
@@ -288,8 +292,7 @@ impl Scene {
         let s = tobj::load_obj(path_str, &options).unwrap().0[0].clone();
 
         let meshes = Mesh::from_tobj(s);
-
-        objects.push(Object::new(0, ObjectType::Mesh, Some(meshes.len()), None));
+        object_list.add_mesh(Some(meshes.len()), meshes);
 
         let camera = Camera {
             eye_pos: glm::vec3(0.0, 0.0, 6.6),
@@ -301,15 +304,14 @@ impl Scene {
         };
 
         Self {
-            objects,
             camera,
-            meshes,
             materials,
             spheres: vec![Sphere::empty()],
             lights: vec![Light::empty()],
             render_param,
             frame_data,
             camera_controller: CameraController::new(4.0, 0.4),
+            object_list,
         }
     }
 }
