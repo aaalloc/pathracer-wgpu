@@ -1,17 +1,22 @@
-# pathracer-wgpu
+# sviet
 
-Toy project pathracer with wgpu, winit, egui
+Yet another pathracer
+Built with wgpu, winit, egui
 
 ## Status
 
-[Raytracer the rest of your life](https://raytracing.github.io/books/RayTracingTheRestOfYourLife.html) is partially implemtend, I have some issue about PDF light sampling.
+Currently in work in progress
+
+[Raytracer the rest of your life](https://raytracing.github.io/books/RayTracingTheRestOfYourLife.html) is partially implemented.
+I currently have some issue about PDF light sampling.
 
 Loading model also works but need more enhancement to be able to apply translation/rotation/scaling at runtime
 
 When all of that will be done next step will be to implement PBR material.
 
 ![prev](image/raytracer_oneweekend.png)
-![](image/cornell_box.png)
+![](image/cornell_box_suzanne.png)
+![](image/raytracer_oneweekend_night.png)
 
 ## Build to WASM
 
