@@ -420,14 +420,14 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
             continue;
         }
 
-        // scattered.ray = Ray(intersection.p, pdf_generate(rngState, intersection));
+        scattered.ray = Ray(intersection.p, pdf_generate(rngState, intersection));
 
-        // scattered.ray.direction = pdf_cosine_generate(rngState, pixar_onb(intersection.normal));
-        // let pdf = pdf_cosine_value(scattered.ray.direction, pixar_onb(intersection.normal));
+        scattered.ray.direction = pdf_cosine_generate(rngState, pixar_onb(intersection.normal));
+        let pdf = pdf_cosine_value(scattered.ray.direction, pixar_onb(intersection.normal));
 
-        scattered.ray.origin = intersection.p;
-        scattered.ray.direction = pdf_light_generate(rngState, intersection.p);
-        let pdf = pdf_light_value(intersection.p, scattered.ray.direction);
+        // scattered.ray.origin = intersection.p;
+        // scattered.ray.direction = pdf_light_generate(rngState, intersection.p);
+        // let pdf = pdf_light_value(intersection.p, scattered.ray.direction);
 
         // let pdf = pdf_mixed_value(
         //     pdf_cosine_value(scattered.ray.direction, pixar_onb(intersection.normal)),
