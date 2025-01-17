@@ -531,7 +531,8 @@ impl<'a> RenderContext<'a> {
                         ui.label("Focus distance:");
                         ui.add(
                             egui::Slider::new(&mut self.scene.camera.focus_distance, 0.0..=100.0)
-                                .text("focus distance"),
+                                .text("focus distance")
+                                .step_by(0.1),
                         );
                     });
 

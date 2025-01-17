@@ -35,6 +35,16 @@ impl ObjectList {
         }
     }
 
+    pub fn new_empty_mesh() -> Self {
+        ObjectList {
+            objects: Vec::new(),
+            counter: 0,
+            offset_counter: 0,
+            meshes: vec![Mesh::empty()],
+            object_hashmap: std::collections::HashMap::new(),
+        }
+    }
+
     pub fn add(&mut self, obj: Object, meshes: Option<Vec<Mesh>>) {
         self.objects.push(obj);
         self.counter += 1;

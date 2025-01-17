@@ -37,6 +37,7 @@ impl Scene {
         let mut spheres = Vec::new();
         let mut materials = Vec::new();
         let mut lights = Vec::new();
+        let mut object_list = ObjectList::new_empty_mesh();
 
         let ground_material = Material::Lambertian {
             albedo: Texture::new_from_color(glm::vec3(0.5, 0.5, 0.5)),
@@ -110,6 +111,8 @@ impl Scene {
             .map(|(i, _)| Object::new(i as u32, object::ObjectType::Sphere, None, None))
             .collect();
 
+        object_list.objects = objects;
+
         Self {
             camera,
             // meshes: vec![Mesh::empty()],
@@ -119,7 +122,7 @@ impl Scene {
             render_param,
             frame_data,
             camera_controller: CameraController::new(4.0, 0.4),
-            object_list: ObjectList::new(),
+            object_list,
         }
     }
 
