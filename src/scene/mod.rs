@@ -164,8 +164,8 @@ impl Scene {
         materials.push(white.clone());
         // materials.push(white.clone());
         materials.push(metal.clone());
+        materials.push(gold_metal);
         materials.push(Material::Dialectric { ref_idx: 1.5 });
-        // materials.push(gold_metal);
 
         let mut back_wall = Mesh::quad();
         translate(&mut back_wall, glm::vec3(0.0, 0.0, -1.0));
@@ -246,21 +246,21 @@ impl Scene {
 
         object_list.add_mesh(Some(rectangle_box.len()), rectangle_box);
 
-        // let path_str = "assets/mesh/suzanne.obj";
-        // let options = tobj::LoadOptions {
-        //     triangulate: true,
-        //     ..Default::default()
-        // };
-        // println!("Current path: {:?}", std::env::current_dir().unwrap());
+        let path_str = "assets/mesh/suzanne.obj";
+        let options = tobj::LoadOptions {
+            triangulate: true,
+            ..Default::default()
+        };
+        println!("Current path: {:?}", std::env::current_dir().unwrap());
 
-        // let s = tobj::load_obj(path_str, &options).unwrap().0[0].clone();
+        let s = tobj::load_obj(path_str, &options).unwrap().0[0].clone();
 
-        // let mut sdsd = Mesh::from_tobj(s);
-        // scale(&mut sdsd, glm::vec3(0.2, 0.2, 0.2));
-        // rotate(&mut sdsd, -35.0, glm::vec3(1.0, 0.0, 0.0));
-        // rotate(&mut sdsd, -30.0, glm::vec3(0.0, 1.0, 0.0));
-        // translate(&mut sdsd, glm::vec3(0.3, -0.30, 0.3));
-        // object_list.add_mesh(Some(sdsd.len()), sdsd);
+        let mut sdsd = Mesh::from_tobj(s);
+        scale(&mut sdsd, glm::vec3(0.2, 0.2, 0.2));
+        rotate(&mut sdsd, -35.0, glm::vec3(1.0, 0.0, 0.0));
+        rotate(&mut sdsd, -30.0, glm::vec3(0.0, 1.0, 0.0));
+        translate(&mut sdsd, glm::vec3(0.3, -0.30, 0.3));
+        object_list.add_mesh(Some(sdsd.len()), sdsd);
 
         spheres.push(Sphere::new(glm::vec3(-0.5, -0.8, 0.3), 0.2));
         object_list.add_sphere(None);
