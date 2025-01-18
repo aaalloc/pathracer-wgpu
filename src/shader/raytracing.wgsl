@@ -225,6 +225,7 @@ const PDF_COSINE = 1u;
 
 fn hit_sphere(
     sphere_index: u32,
+    material_index: u32,
     ray: Ray,
     ray_min: f32,
     ray_max: f32,
@@ -253,7 +254,7 @@ fn hit_sphere(
     }
 
 
-    *hit = sphereIntersection(ray, sphere, root, sphere_index);
+    *hit = sphereIntersection(ray, sphere, root, material_index);
     return true;
 }
 
@@ -304,34 +305,15 @@ fn hit_triangle(
 
     let t = f * dot(e2, q);
     if t > ray_min && t < ray_max {
+        let p = ray.origin + t * ray.direction;
         let b = vec3(1.0 - u - v, u, v);
         let n = b.x * surface.normals[0].xyz + b.y * surface.normals[1].xyz + b.z * surface.normals[2].xyz;
         let front_face = dot(ray.direction, n) < 0.0;
-        *hit = HitRecord(ray.origin + t * ray.direction, normalize(n), t, material_index, front_face);
+        *hit = HitRecord(p, normalize(n), t, material_index, front_face);
         return true;
     }
 
     return false;
-}
-
-fn hit_object(
-    object_index: u32,
-    ray: Ray,
-    ray_min: f32,
-    ray_max: f32,
-    hit: ptr<function, HitRecord>,
-) -> bool {
-    switch objects[object_index].obj_type {
-        case OBJECT_SPHERE: {
-            return hit_sphere(object_index, ray, ray_min, ray_max, hit);
-        }
-        case OBJECT_MESHES: {
-            return hit_triangle(object_index, objects[object_index].id, ray, ray_min, ray_max, hit);
-        }
-        default: {
-            return false;
-        }
-    }
 }
 
 fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool {
@@ -344,25 +326,19 @@ fn check_intersection(ray: Ray, intersection: ptr<function, HitRecord>) -> bool 
         if obj.count > 1u {
             for (var j = 0u; j < obj.count; j += 1u) {
                 if hit_triangle(obj.offset + j, obj.id, ray, MIN_T, closest_so_far, &tmp_rec) {
-                    // hit_anything = true;
+                    hit_anything = true;
                     closest_so_far = tmp_rec.t;
                     *intersection = tmp_rec;
                 }
             }
         } else {
-            if hit_object(i, ray, MIN_T, closest_so_far, &tmp_rec) {
-                // hit_anything = true;
+            if hit_sphere(obj.offset, i, ray, MIN_T, closest_so_far, &tmp_rec) {
+                hit_anything = true;
                 closest_so_far = tmp_rec.t;
                 *intersection = tmp_rec;
             }
         }
     }
-    if closest_so_far < MAX_T {
-        hit_anything = true;
-    } else {
-        *intersection = HitRecord();
-    }
-
     return hit_anything;
 }
 
@@ -403,9 +379,9 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
             break;
         }
         // for triangles only
-        if !intersection.front_face {
-            continue;
-        }
+        // if !intersection.front_face {
+        //     continue;
+        // }
 
         let material = materials[intersection.material_index];
         color_from_emission += color_from_scatter * emitted(material, 0.5, 0.5, intersection);
@@ -419,14 +395,13 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
             ray = scattered.ray;
             continue;
         }
-
         scattered.ray = Ray(intersection.p, pdf_generate(rngState, intersection));
 
-        // scattered.ray.direction = pdf_cosine_generate(rngState, pixar_onb(intersection.normal));
-        // let pdf = pdf_cosine_value(scattered.ray.direction, pixar_onb(intersection.normal));
+        scattered.ray.direction = pdf_cosine_generate(rngState, pixar_onb(intersection.normal));
+        let pdf = pdf_cosine_value(scattered.ray.direction, pixar_onb(intersection.normal));
 
-        scattered.ray.direction = pdf_light_generate(rngState, intersection.p);
-        let pdf = pdf_light_value(intersection.p, scattered.ray.direction);
+        // scattered.ray.direction = pdf_light_generate(rngState, intersection.p);
+        // let pdf = pdf_light_value(intersection.p, scattered.ray.direction);
 
         // let pdf = pdf_mixed_value(
         //     pdf_cosine_value(scattered.ray.direction, pixar_onb(intersection.normal)),
@@ -435,7 +410,6 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
         // let pdf1 = pdf_cosine_value(scattered.ray.direction, pixar_onb(intersection.normal));
         // let pdf2 = pdf_light_value(intersection.p, scattered.ray.direction);
         // let pdf = (0.5 * pdf1) + (0.5 * pdf2);
-
 
         let scattering_pdf = scattering_pdf_lambertian(intersection.normal, scattered.ray.direction);
         // let scattering_pdf = 1.0;
@@ -498,9 +472,9 @@ fn scatter(
         {
             var reflected = reflect(ray.direction, hit.normal);
             let fuzz = material.fuzz;
-            let direction = normalize(reflected) + fuzz * rng_in_unit_sphere(rngState);
+            reflected = normalize(reflected) + fuzz * rng_in_unit_sphere(rngState);
             *s = Scatter(
-                Ray(hit.p, direction),
+                Ray(hit.p, reflected),
                 texture_look_up(material.desc, 0.5, 0.5), PDF_NONE
             );
         }
@@ -663,6 +637,18 @@ fn rng_next_vec3_surface(
     return point;
 }
 
+fn rnd_to_sphere(radius: f32, distance_squared: f32, state: ptr<function, u32>) -> vec3<f32> {
+    let r1 = rng_next_float(state);
+    let r2 = rng_next_float(state);
+    let z = 1.0 + r2 * (sqrt(1.0 - radius * radius / distance_squared) - 1.0);
+
+    let phi = 2.0 * PI * r1;
+    let x = cos(phi) * sqrt(1.0 - z * z);
+    let y = sin(phi) * sqrt(1.0 - z * z);
+
+    return vec3(x, y, z);
+}
+
 fn area_surface(vertice: array<vec4<f32>, 3>) -> f32 {
     let v0 = vertice[0].xyz; // corner
     let v1 = vertice[1].xyz; // right
@@ -696,27 +682,58 @@ fn pdf_cosine_generate(state: ptr<function, u32>, onb: ONB) -> vec3<f32> {
 
 fn pdf_light_generate(state: ptr<function, u32>, origin: vec3<f32>) -> vec3<f32> {
     let light = lights[0];
-    let vertices_1 = surfaces[objects[light.id].offset].vertices;
-    return rng_next_vec3_surface(state, vertices_1) - origin;
+    switch objects[light.id].obj_type {
+        case OBJECT_SPHERE: {
+            let sphere = spheres[light.id];
+            let direction = sphere.center.xyz - origin;
+            let distance = length(direction);
+            let onb = pixar_onb(direction);
+            let rnd_direction = rnd_to_sphere(sphere.radius, distance * distance, state);
+            return onb.u * rnd_direction.x + onb.v * rnd_direction.y + onb.w * rnd_direction.z;
+        }
+        case OBJECT_MESHES: {
+            let vertices_1 = surfaces[objects[light.id].offset].vertices;
+            return rng_next_vec3_surface(state, vertices_1) - origin;
+        }
+        default: {
+            return vec3(0.0);
+        }
+    }
 }
 
 fn pdf_light_value(origin: vec3<f32>, direction: vec3<f32>) -> f32 {
-    let light = lights[0];
-    let vertices_1 = surfaces[objects[light.id].offset].vertices;
-
-    let area = area_surface(vertices_1) * 2.0;
     var hit = HitRecord();
     if !check_intersection(Ray(origin, direction), &hit) {
         return 0.0;
     }
+    switch objects[hit.material_index].obj_type {
+        case OBJECT_SPHERE: {
+            let light = lights[0];
+            let sphere = spheres[0];
+            let distance = sphere.center.xyz - origin;
+            let tmp = length(distance);
 
-    var distance = direction;
-    let tmp = length(distance);
-    distance = normalize(distance);
-    let l = tmp * tmp;
-    let cosine = dot(-distance, hit.normal);
-    let pdf = l / (abs(cosine) * area);
-    return pdf;
+            let l = tmp * tmp;
+            let cosine = sqrt(1.0 - sphere.radius * sphere.radius / l);
+            let solid_angle = 2.0 * PI * (1.0 - cosine);
+
+            return 1.0 / solid_angle;
+        }
+        case OBJECT_MESHES: {
+            let light = lights[0];
+            let vertices_1 = surfaces[objects[light.id].offset].vertices;
+            let area = area_surface(vertices_1) * 2.0;
+
+            let distance = hit.t * hit.t * length(direction * direction);
+            let cosine = abs(dot(direction, hit.normal) / length(direction));
+            let pdf = distance / (cosine * area);
+
+            return pdf;
+        }
+        default: {
+            return 0.0;
+        }
+    }
 }
 
 fn pdf_mixed_value(value1: f32, value2: f32) -> f32 {

@@ -101,7 +101,7 @@ impl Scene {
             eye_dir: glm::vec3(0.9086872, -0.15932521, 0.3858796),
             up: glm::vec3(0.0, 1.0, 0.0),
             vfov: 20.0,
-            aperture: 0.6,
+            aperture: 0.0,
             focus_distance: 10.0,
         };
 
@@ -129,6 +129,7 @@ impl Scene {
     pub fn cornell_scene(render_param: RenderParam, frame_data: FrameData) -> Self {
         let mut materials = Vec::new();
         let mut object_list = ObjectList::new();
+        let mut spheres = Vec::new();
         let mut lights = Vec::new();
 
         let red = Material::Lambertian {
@@ -163,6 +164,7 @@ impl Scene {
         materials.push(white.clone());
         // materials.push(white.clone());
         materials.push(metal.clone());
+        materials.push(Material::Dialectric { ref_idx: 1.5 });
         // materials.push(gold_metal);
 
         let mut back_wall = Mesh::quad();
@@ -260,6 +262,8 @@ impl Scene {
         // translate(&mut sdsd, glm::vec3(0.3, -0.30, 0.3));
         // object_list.add_mesh(Some(sdsd.len()), sdsd);
 
+        spheres.push(Sphere::new(glm::vec3(-0.5, -0.8, 0.3), 0.2));
+        object_list.add_sphere(None);
         let camera = Camera {
             eye_pos: glm::vec3(0.0, 0.0, 5.),
             eye_dir: glm::vec3(0.0, 0.0, -1.0),
@@ -272,7 +276,7 @@ impl Scene {
         Self {
             camera,
             materials,
-            spheres: vec![Sphere::empty()],
+            spheres,
             lights,
             render_param,
             frame_data,

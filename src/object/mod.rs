@@ -22,6 +22,7 @@ pub struct ObjectList {
     pub object_hashmap: std::collections::HashMap<u32, (u32, u32)>,
     pub counter: u32,
     pub offset_counter: u32,
+    pub offset_counter_spheres: u32,
 }
 
 impl ObjectList {
@@ -30,6 +31,7 @@ impl ObjectList {
             objects: Vec::new(),
             counter: 0,
             offset_counter: 0,
+            offset_counter_spheres: 0,
             meshes: Vec::new(),
             object_hashmap: std::collections::HashMap::new(),
         }
@@ -40,15 +42,19 @@ impl ObjectList {
             objects: Vec::new(),
             counter: 0,
             offset_counter: 0,
+            offset_counter_spheres: 0,
             meshes: vec![Mesh::empty()],
             object_hashmap: std::collections::HashMap::new(),
         }
     }
 
     pub fn add(&mut self, obj: Object, meshes: Option<Vec<Mesh>>) {
+        match obj.obj_type.into() {
+            ObjectType::Sphere => self.offset_counter_spheres += obj.count,
+            ObjectType::Mesh => self.offset_counter += obj.count,
+        }
         self.objects.push(obj);
         self.counter += 1;
-        self.offset_counter += obj.count;
         if let Some(mesh) = meshes {
             mesh.iter().for_each(|m| self.meshes.push(*m));
 
@@ -65,7 +71,7 @@ impl ObjectList {
                 self.counter,
                 ObjectType::Sphere,
                 count,
-                Some(self.offset_counter),
+                Some(self.offset_counter_spheres),
             ),
             None,
         );
@@ -100,6 +106,16 @@ impl Object {
 pub enum ObjectType {
     Sphere = 0,
     Mesh = 1,
+}
+
+impl From<u32> for ObjectType {
+    fn from(item: u32) -> Self {
+        match item {
+            0 => ObjectType::Sphere,
+            1 => ObjectType::Mesh,
+            _ => ObjectType::Sphere,
+        }
+    }
 }
 
 #[repr(C)]
