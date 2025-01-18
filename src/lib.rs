@@ -169,7 +169,7 @@ fn init(
 pub async fn run() {
     info!("Starting up");
     let scale = 2.2;
-    let width = 900 * scale as u32;
+    let width = 500 * scale as u32;
     let height = 450 * scale as u32;
     let (window, event_loop) = init(width, height);
 
@@ -180,7 +180,7 @@ pub async fn run() {
         last_time: instant::Instant::now(),
         render_context: RenderContext::new(
             &window,
-            &Scene::raytracing_scene_oneweek(
+            &Scene::cornell_scene(
                 scene::RenderParam {
                     samples_per_pixel: 1,
                     max_depth: 30,

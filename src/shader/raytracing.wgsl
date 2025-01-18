@@ -422,30 +422,22 @@ fn ray_color(first_ray: Ray, rngState: ptr<function, u32>) -> vec3<f32> {
 
         scattered.ray = Ray(intersection.p, pdf_generate(rngState, intersection));
 
-        scattered.ray.direction = pdf_cosine_generate(rngState, pixar_onb(intersection.normal));
-        let pdf = pdf_cosine_value(scattered.ray.direction, pixar_onb(intersection.normal));
+        // scattered.ray.direction = pdf_cosine_generate(rngState, pixar_onb(intersection.normal));
+        // let pdf = pdf_cosine_value(scattered.ray.direction, pixar_onb(intersection.normal));
 
-        // scattered.ray.origin = intersection.p;
-        // scattered.ray.direction = pdf_light_generate(rngState, intersection.p);
-        // let pdf = pdf_light_value(intersection.p, scattered.ray.direction);
+        scattered.ray.direction = pdf_light_generate(rngState, intersection.p);
+        let pdf = pdf_light_value(intersection.p, scattered.ray.direction);
 
         // let pdf = pdf_mixed_value(
         //     pdf_cosine_value(scattered.ray.direction, pixar_onb(intersection.normal)),
-        //     pdf_light_value(intersection.p, normalize(scattered.ray.direction))
+        //     pdf_light_value(intersection.p, scattered.ray.direction)
         // );
+        // let pdf1 = pdf_cosine_value(scattered.ray.direction, pixar_onb(intersection.normal));
+        // let pdf2 = pdf_light_value(intersection.p, scattered.ray.direction);
+        // let pdf = (0.5 * pdf1) + (0.5 * pdf2);
 
-        // var to_light = pdf_light_generate(rngState, intersection.p);
-        // let distance = length(to_light * to_light);
-
-        // to_light = normalize(to_light);
-        // scattered.ray.direction = to_light;
-        // let light_cosine = abs(to_light.y);
-
-        // let area = 0.16;
-        // let pdf = distance / (light_cosine * area);
 
         let scattering_pdf = scattering_pdf_lambertian(intersection.normal, scattered.ray.direction);
-
         // let scattering_pdf = 1.0;
         // let pdf = 1.0;
         color_from_scatter *= (scattered.attenuation * scattering_pdf) / pdf;
@@ -718,17 +710,13 @@ fn pdf_light_value(origin: vec3<f32>, direction: vec3<f32>) -> f32 {
         return 0.0;
     }
 
-
-    let distance = hit.t * hit.t * length(direction * direction);
-    let cosine = abs(dot(direction, hit.normal) / length(direction));
-    // let cosine = abs(direction.y);
-    return distance / (cosine * area);
-
-
-    // let distance = origin - hit.p;
-    // let l = length(distance * distance);
-    // let pdf = l / (abs(dot(hit.normal, -direction)) * area);
-    // return pdf;
+    var distance = direction;
+    let tmp = length(distance);
+    distance = normalize(distance);
+    let l = tmp * tmp;
+    let cosine = dot(-distance, hit.normal);
+    let pdf = l / (abs(cosine) * area);
+    return pdf;
 }
 
 fn pdf_mixed_value(value1: f32, value2: f32) -> f32 {
